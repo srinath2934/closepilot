@@ -29,9 +29,9 @@
 
 ## 1. Executive Summary
 
-In enterprise B2B sales, account executives manage dozens of simultaneous deals spread across complex sales cycles. High-value opportunities stall due to missing follow-ups, unclear buyer requirements, or lack of timely action after proposals are dispatched. 
+In enterprise B2B sales, account executives and founders manage dozens of simultaneous deals spread across complex sales cycles. High-value opportunities stall due to missing follow-ups, unclear buyer requirements, or lack of timely action after proposals are dispatched. 
 
-**GWC AI Sales Intelligence Copilot** is a stateful multi-agent system built on **LangGraph**, **Model Context Protocol (MCP)**, and **Groq / NVIDIA LLMs**. It continuously audits live CRM pipelines (HubSpot), calculates deterministic urgency scores based on deal velocity and inactivity decay, generates context-grounded strategic outreach, and safely pauses at a **Human-in-the-Loop (HITL) gate** before executing verified CRM writes.
+**ClosePilot** is a production-grade stateful multi-agent sales copilot MVP designed as a real-world learning and reference architecture for building autonomous agent workflows. Engineered using **LangGraph**, **Model Context Protocol (MCP)**, and **NVIDIA / Groq LLMs**, it continuously audits live CRM pipelines (HubSpot), calculates deterministic urgency scores based on deal velocity and inactivity decay, generates context-grounded strategic outreach, and safely pauses at a **Human-in-the-Loop (HITL) gate** before executing verified CRM writes.
 
 ---
 
@@ -362,5 +362,6 @@ uv run python run_demo.py
 ```
 
 ---
+ 
+*A real-world Production AI Agent MVP & Educational Reference Architecture for Autonomous Sales Engineering.*
 
-*Built with ❤️ by the GWC Data.AI Team.*
