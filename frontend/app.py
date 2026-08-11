@@ -459,33 +459,120 @@ with tab_copilot:
         with st.chat_message(msg["role"]):
             st.markdown(msg["content"])
 
-    user_chat_input = st.chat_input("Ask a question (e.g. 'Diagnose why Acme Corp deal is stalled' or 'What are the main risks across my pipeline?')")
+    user_chat_input = st.chat_input("Chat with ClosePilot (e.g. 'Analyze my CRM pipeline', 'Why is Acme Corp prioritized?', 'Make draft shorter')...")
     if user_chat_input:
         st.session_state.chat_messages.append({"role": "user", "content": user_chat_input})
-        with st.chat_message("user"):
-            st.markdown(user_chat_input)
+        input_lower = user_chat_input.lower().strip()
 
-        with st.chat_message("assistant"):
-            with st.spinner("ClosePilot is analyzing pipeline context with NVIDIA LLM..."):
-                try:
-                    from app.llm.provider import get_llm_provider
-                    
-                    # Gather current opportunities from state or live CRM
-                    active_opps = []
-                    if st.session_state.workflow_state:
-                        active_opps = st.session_state.workflow_state.get("opportunities", [])
-                    if not active_opps:
-                        active_opps = run_async(hubspot_client.get_deals())
+        # Check Intent 1: Pipeline Analysis / Follow-Up Generation
+        is_analysis_intent = any(
+            kw in input_lower for kw in [
+                "analyze", "follow up", "followup", "who should i", "priority", "prioritize",
+                "find deal", "find urgent", "enterprise deal", "stalled deal", "opportunities",
+                "pipeline review", "run workflow", "which deal"
+            ]
+        )
 
-                    context_lines = []
-                    for o in active_opps[:10]:
-                        notes_str = " | Notes: " + " ".join(o.get("notes", [])) if o.get("notes") else ""
-                        context_lines.append(
-                            f"• Deal: {o.get('name')} | Stage: {o.get('stage')} | Amount: ${float(o.get('amount', 0)):,.0f} | Inactive: {o.get('days_inactive', 0)} days | Contact: {o.get('contact_name')} ({o.get('contact_title')}, {o.get('company_name')}){notes_str}"
-                        )
-                    pipeline_context = "\n".join(context_lines)
+        # Check Intent 2: Draft Revision
+        is_revision_intent = any(
+            kw in input_lower for kw in [
+                "rewrite", "revise", "make it shorter", "make draft", "shorter", "change tone",
+                "add discount", "friendlier", "more concise", "update draft", "re-draft", "mention"
+            ]
+        ) and st.session_state.workflow_state is not None
 
-                    chat_system_prompt = f"""You are ClosePilot, an elite AI Sales Intelligence & Revenue Operations Copilot.
+        if is_analysis_intent:
+            with st.chat_message("user"):
+                st.markdown(user_chat_input)
+
+            with st.chat_message("assistant"):
+                with st.spinner(f"ClosePilot is executing multi-agent pipeline for '{user_chat_input}'..."):
+                    try:
+                        config = {"configurable": {"thread_id": st.session_state.thread_id}}
+                        initial_state = {
+                            "thread_id": st.session_state.thread_id,
+                            "user_request": user_chat_input,
+                            "intent": "FIND_FOLLOWUPS",
+                            "deals": [],
+                            "contacts": [],
+                            "activities": [],
+                            "opportunities": [],
+                            "selected_opportunity": None,
+                            "priority_score": None,
+                            "strategy": None,
+                            "followup_draft": None,
+                            "approval_status": None,
+                            "action_result": None,
+                            "verification_result": None,
+                            "errors": [],
+                            "retry_count": 0,
+                        }
+                        result = run_async(sales_graph.ainvoke(initial_state, config=config))
+                        deals = result.get("deals", [])
+                        opps = result.get("opportunities", [])
+                        selected = result.get("selected_opportunity") or {}
+                        
+                        has_live_ids = any(str(d.get("id", "")).isdigit() for d in deals)
+                        st.session_state.crm_source = "Live HubSpot" if has_live_ids else "Sandbox"
+                        st.session_state.workflow_state = result
+                        st.session_state.execution_phase = "AWAITING_APPROVAL"
+                        
+                        reply_text = f"✅ **Analysis Complete!** I evaluated **{len(deals)} active CRM deals**.\n\n🎯 **Top Priority:** **{selected.get('name', 'N/A')}** (${float(selected.get('amount', 0)):,.0f} • {selected.get('stage', 'N/A')})\n• **Score:** `{selected.get('score', 0):.0f} pts` ({', '.join(selected.get('score_reasons', [])[:2])})\n• **Key Contact:** {selected.get('contact_name')} ({selected.get('contact_title')})\n\n👉 *Review the strategic rationale and approve or customize the follow-up draft in the review panel above!*"
+                        st.markdown(reply_text)
+                        st.session_state.chat_messages.append({"role": "assistant", "content": reply_text})
+                        st.rerun()
+                    except Exception as e:
+                        err_msg = f"Analysis workflow failed: {e}"
+                        st.error(err_msg)
+                        st.session_state.chat_messages.append({"role": "assistant", "content": err_msg})
+
+        elif is_revision_intent:
+            with st.chat_message("user"):
+                st.markdown(user_chat_input)
+
+            with st.chat_message("assistant"):
+                with st.spinner("Revising follow-up email draft with your instructions..."):
+                    try:
+                        temp_state = st.session_state.workflow_state.copy()
+                        temp_state["user_request"] = user_chat_input
+                        updated_comm = run_async(communication_node(temp_state))
+                        if updated_comm.get("followup_draft"):
+                            st.session_state.workflow_state["followup_draft"] = updated_comm.get("followup_draft")
+                            rev_draft = updated_comm.get("followup_draft")
+                            reply_text = f"✨ **Draft Revised Successfully!**\n\n**Subject:** {rev_draft.get('subject')}\n\n```text\n{rev_draft.get('body')}\n```\n\n*The review card above has been updated. You can approve and write it to HubSpot whenever you are ready!*"
+                            st.markdown(reply_text)
+                            st.session_state.chat_messages.append({"role": "assistant", "content": reply_text})
+                            st.rerun()
+                    except Exception as e:
+                        err_msg = f"Draft revision failed: {e}"
+                        st.error(err_msg)
+                        st.session_state.chat_messages.append({"role": "assistant", "content": err_msg})
+
+        else:
+            # General Conversational & Diagnostic Query
+            with st.chat_message("user"):
+                st.markdown(user_chat_input)
+
+            with st.chat_message("assistant"):
+                with st.spinner("ClosePilot is analyzing CRM pipeline context with NVIDIA LLM..."):
+                    try:
+                        from app.llm.provider import get_llm_provider
+                        
+                        active_opps = []
+                        if st.session_state.workflow_state:
+                            active_opps = st.session_state.workflow_state.get("opportunities", [])
+                        if not active_opps:
+                            active_opps = run_async(hubspot_client.get_deals())
+
+                        context_lines = []
+                        for o in active_opps[:10]:
+                            notes_str = " | Notes: " + " ".join(o.get("notes", [])) if o.get("notes") else ""
+                            context_lines.append(
+                                f"• Deal: {o.get('name')} | Stage: {o.get('stage')} | Amount: ${float(o.get('amount', 0)):,.0f} | Inactive: {o.get('days_inactive', 0)} days | Contact: {o.get('contact_name')} ({o.get('contact_title')}, {o.get('company_name')}){notes_str}"
+                            )
+                        pipeline_context = "\n".join(context_lines)
+
+                        chat_system_prompt = f"""You are ClosePilot, an elite AI Sales Intelligence & Revenue Operations Copilot.
 You have real-time access to the user's HubSpot CRM pipeline:
 
 ### ACTIVE CRM PIPELINE:
@@ -496,14 +583,14 @@ You have real-time access to the user's HubSpot CRM pipeline:
 - Ground all facts strictly in the CRM data above.
 - Be concise, analytical, and actionable. Provide bullet points and clear next steps."""
 
-                    llm = get_llm_provider()
-                    ai_reply = run_async(llm.generate(chat_system_prompt, user_chat_input))
-                    st.markdown(ai_reply)
-                    st.session_state.chat_messages.append({"role": "assistant", "content": ai_reply})
-                except Exception as e:
-                    err_msg = f"Chat analysis error: {e}"
-                    st.error(err_msg)
-                    st.session_state.chat_messages.append({"role": "assistant", "content": err_msg})
+                        llm = get_llm_provider()
+                        ai_reply = run_async(llm.generate(chat_system_prompt, user_chat_input))
+                        st.markdown(ai_reply)
+                        st.session_state.chat_messages.append({"role": "assistant", "content": ai_reply})
+                    except Exception as e:
+                        err_msg = f"Chat analysis error: {e}"
+                        st.error(err_msg)
+                        st.session_state.chat_messages.append({"role": "assistant", "content": err_msg})
 
 
 # ===========================================================================
