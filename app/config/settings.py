@@ -37,6 +37,14 @@ class Settings(BaseSettings):
     SUPABASE_URL: Optional[str] = None
     SUPABASE_KEY: Optional[str] = None
 
+    # LangSmith Observability & Tracing
+    LANGCHAIN_TRACING_V2: Optional[bool] = None
+    LANGCHAIN_API_KEY: Optional[str] = None
+    LANGCHAIN_PROJECT: Optional[str] = "closepilot"
+    LANGCHAIN_ENDPOINT: Optional[str] = "https://api.smith.langchain.com"
+    LANGSMITH_API_KEY: Optional[str] = None
+    LANGSMITH_PROJECT: Optional[str] = None
+
     model_config = SettingsConfigDict(
         env_file=os.path.join(os.path.dirname(__file__), "../../.env"),
         env_file_encoding="utf-8",
@@ -45,8 +53,21 @@ class Settings(BaseSettings):
 
 
 def get_settings() -> Settings:
-    """Dynamically reloads and returns latest settings from .env."""
-    return Settings()
+    """Dynamically reloads and returns latest settings from .env and exports LangSmith vars."""
+    s = Settings()
+    
+    # Auto-export LangSmith variables to os.environ for LangChain/LangGraph tracing
+    api_key = s.LANGSMITH_API_KEY or s.LANGCHAIN_API_KEY
+    project = s.LANGSMITH_PROJECT or s.LANGCHAIN_PROJECT or "closepilot"
+    
+    if api_key:
+        os.environ["LANGCHAIN_TRACING_V2"] = "true"
+        os.environ["LANGCHAIN_API_KEY"] = api_key
+        os.environ["LANGCHAIN_PROJECT"] = project
+        os.environ["LANGCHAIN_ENDPOINT"] = s.LANGCHAIN_ENDPOINT or "https://api.smith.langchain.com"
+
+    return s
 
 
 settings = get_settings()
+

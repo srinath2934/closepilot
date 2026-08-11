@@ -27,6 +27,12 @@ services:
         sync: false
       - key: SUPABASE_KEY
         sync: false
+      - key: LANGCHAIN_TRACING_V2
+        value: "true"
+      - key: LANGCHAIN_PROJECT
+        value: "closepilot"
+      - key: LANGCHAIN_API_KEY
+        sync: false
 
   # 2. Streamlit Frontend Dashboard
   - type: web
