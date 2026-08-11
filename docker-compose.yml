@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  sales-agent:
+    build: .
+    container_name: closepilot-sales-copilot
+    ports:
+      - "8000:8000"   # FastAPI Backend & REST API
+      - "8501:8501"   # Streamlit Sales Dashboard
+    env_file:
+      - .env
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
