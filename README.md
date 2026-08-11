@@ -49,26 +49,37 @@ Traditional sales workflows suffer from five fundamental breakdowns:
 
 ## 3. The Proposed Solution
 
-The GWC AI Sales Agent solves these challenges through a **hybrid deterministic-reasoning architecture**:
+The ClosePilot system solves these challenges through a **hybrid deterministic-reasoning architecture**:
 
 ```mermaid
-flowchart LR
-    A["🔍 Read Live CRM<br/>(HubSpot MCP)"] --> B["📊 Deterministic Score<br/>(Zero LLM Cost)"]
-    B --> C["🧠 Strategy Reason<br/>(Groq Llama-3.3-70b)"]
-    C --> D["✍️ Grounded Email Draft<br/>(Zero Hallucination)"]
-    D --> E{"🛡️ Human Review Gate<br/>(Approve / Modify / Reject)"}
-    E -- "Approved" --> F["⚡ Execute CRM Write<br/>(Tasks & Notes via MCP)"]
-    E -- "Rejected" --> G["🛑 Skip Write<br/>(Zero Side-Effects)"]
-    F --> H["✅ Read-After-Write Verify<br/>& Supabase Audit"]
+flowchart TD
+    subgraph S1 ["1. INGEST & SCORE (Zero-Hallucination & Zero-Token-Cost)"]
+        A["🔍 1. Ingest Live Deals & Contacts<br/><b>HubSpot Remote MCP Client</b>"] --> B["📊 2. Compute Urgency Score<br/><b>Deterministic Mathematical Rules</b>"]
+    end
 
-    style A fill:#e3f2fd,stroke:#1565c0,stroke-width:2px;
-    style B fill:#fff3e0,stroke:#e65100,stroke-width:2px;
-    style C fill:#f3e5f5,stroke:#6a1b9a,stroke-width:2px;
-    style D fill:#ede7f6,stroke:#4527a0,stroke-width:2px;
-    style E fill:#fff8e1,stroke:#f57f17,stroke-width:2px;
-    style F fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px;
-    style G fill:#ffebee,stroke:#c62828,stroke-width:2px;
-    style H fill:#e0f2f1,stroke:#00695c,stroke-width:2px;
+    subgraph S2 ["2. STRATEGIC REASONING & DRAFTING (Constrained LLM)"]
+        B --> C["🧠 3. Analyze Buyer Blockers & Strategy<br/><b>NVIDIA Llama 3.1 70B / Groq LPU</b>"]
+        C --> D["✍️ 4. Grounded Follow-up Draft<br/><b>Anti-Invention Guardrails</b>"]
+    end
+
+    subgraph S3 ["3. HUMAN-IN-THE-LOOP SAFETY GATE (LangGraph Pause)"]
+        D --> E{"🛡️ 5. Sales Rep Approval Gate<br/><b>Review • Edit • Approve • Reject</b>"}
+    end
+
+    subgraph S4 ["4. EXECUTE, PERSIST & AUDIT"]
+        E -->|"✅ Approved / Modified"| F["⚡ 6. Execute CRM Write<br/><b>Schedule HubSpot Task & Log Note</b>"]
+        E -->|"🛑 Rejected"| G["⏭️ Skip Execution<br/><b>Zero Side-Effects</b>"]
+        F --> H["✅ 7. Read-After-Write Verification<br/>& Immutable Supabase Audit Log"]
+    end
+
+    style A fill:#0f172a,stroke:#38bdf8,stroke-width:2px,color:#f8fafc;
+    style B fill:#0f172a,stroke:#38bdf8,stroke-width:2px,color:#f8fafc;
+    style C fill:#1e1b4b,stroke:#818cf8,stroke-width:2px,color:#f8fafc;
+    style D fill:#1e1b4b,stroke:#818cf8,stroke-width:2px,color:#f8fafc;
+    style E fill:#451a03,stroke:#fbbf24,stroke-width:3px,color:#fef3c7;
+    style F fill:#064e3b,stroke:#34d399,stroke-width:2px,color:#ecfdf5;
+    style G fill:#7f1d1d,stroke:#f87171,stroke-width:2px,color:#fef2f2;
+    style H fill:#064e3b,stroke:#34d399,stroke-width:2px,color:#ecfdf5;
 ```
 
 * **Deterministic Prioritization**: Fast mathematical scoring rank-orders deals by stage weights, contract sizes, and days inactive without token consumption or hallucination.
@@ -83,49 +94,61 @@ flowchart LR
 
 ```mermaid
 graph TD
-    subgraph Presentation_Layer ["🖥️ Presentation Layer"]
-        UI["Streamlit Enterprise UI<br/>(http://localhost:8501)"]
-        API_DOCS["FastAPI OpenAPI / Swagger<br/>(http://localhost:8000/docs)"]
+    subgraph UI_Layer ["🖥️ Presentation Layer (Render & Local)"]
+        STREAMLIT["🖥️ <b>Streamlit Enterprise UI</b><br/>• Live Sales Pipeline Explorer<br/>• AI Copilot & Review Modal<br/>• Audit Log & Settings<br/><i>https://closepilot-app.onrender.com</i>"]
+        FASTAPI["🔌 <b>FastAPI REST Server</b><br/>• /api/workflow/start & approve<br/>• /api/deals & /api/health<br/>• Interactive Swagger Docs (/docs)<br/><i>https://closepilot-api.onrender.com</i>"]
     end
 
-    subgraph LangGraph_Orchestrator ["⚡ LangGraph Orchestration Pipeline"]
-        START([START]) --> RESEARCH["🔍 Research Node<br/>(HubSpot Deals & Contacts)"]
-        RESEARCH --> PRIORITIZE["📊 Prioritize Node<br/>(Deterministic Scoring Engine)"]
-        PRIORITIZE --> STRATEGY["🧠 Strategy Node<br/>(LLM Chain-of-Thought)"]
-        STRATEGY --> COMM["✍️ Communication Node<br/>(Zero-Hallucination Drafter)"]
-        COMM --> APPROVAL{"🛡️ Approval Node<br/>(Checkpointer Pause)"}
+    subgraph LangGraph_Core ["⚡ LangGraph Multi-Agent Orchestration"]
+        START([START]) --> RESEARCH["🔍 <b>Research Node</b><br/>Ingests live deals, contacts & notes"]
+        RESEARCH --> PRIORITIZE["📊 <b>Prioritize Node</b><br/>Deterministic urgency scoring"]
+        PRIORITIZE --> STRATEGY["🧠 <b>Strategy Node</b><br/>Reasoning over deal blockers"]
+        STRATEGY --> COMM["✍️ <b>Communication Node</b><br/>Zero-hallucination email drafting"]
+        COMM --> APPROVAL{"🛡️ <b>Approval Gate</b><br/>LangGraph Checkpointer Pause"}
         
-        APPROVAL -->|APPROVED / MODIFIED| ACTION["⚡ Action Node<br/>(HubSpot Task & Note Write)"]
+        APPROVAL -->|APPROVED / MODIFIED| ACTION["⚡ <b>Action Node</b><br/>Writes HubSpot tasks & notes"]
         APPROVAL -->|REJECTED| END_REJECT([END - Skipped])
         
-        ACTION --> VERIFY["✅ Verification Node<br/>(Read-After-Write Confirmation)"]
+        ACTION --> VERIFY["✅ <b>Verification Node</b><br/>Read-after-write confirmation"]
         VERIFY --> END_SUCCESS([END - Success])
     end
 
-    subgraph External_Services ["🌐 External Integrations & Infrastructure"]
-        MCP["🔌 HubSpot Remote MCP Server<br/>• Deals & Contacts Objects<br/>• Tasks & Engagements<br/>• PKCE OAuth Flow"]
-        LLM["⚡ LLM Inference Engine<br/>• Groq LPU (Llama-3.3-70b)<br/>• NVIDIA NIM (Llama-3.1-70b)"]
-        DB[("🗄️ Supabase PostgreSQL<br/>• agent_threads & runs<br/>• approval_requests<br/>• audit_events")]
+    subgraph Cloud_Integrations ["🌐 Connected Cloud Services & Infrastructure"]
+        HUBSPOT["🔌 <b>HubSpot Remote MCP</b><br/>• Deals & Contacts Objects<br/>• Tasks & Engagements<br/>• PKCE OAuth Flow"]
+        LLM["🧠 <b>AI Inference Engine</b><br/>• NVIDIA NIM (Llama 3.1 70B)<br/>• Groq LPU (Llama 3.3 70B)"]
+        SUPABASE[("🗄️ <b>Supabase PostgreSQL</b><br/>• agent_threads & runs<br/>• approval_requests<br/>• audit_events")]
+        LANGSMITH["📊 <b>LangSmith Observability</b><br/>• Trace waterfall graphs<br/>• Per-node token & latency tracking"]
     end
 
-    UI -->|REST / Async| LangGraph_Orchestrator
-    API_DOCS -->|FastAPI Endpoints| LangGraph_Orchestrator
-    RESEARCH <-->|Read Objects| MCP
-    ACTION -->|Write Tasks & Notes| MCP
-    VERIFY <-->|Verify ID| MCP
+    STREAMLIT <-->|State / HTTP| FASTAPI
+    FASTAPI <-->|Orchestrates| LangGraph_Core
+    RESEARCH <-->|Read Data| HUBSPOT
+    ACTION -->|Write Tasks & Notes| HUBSPOT
+    VERIFY <-->|Confirm IDs| HUBSPOT
     STRATEGY <-->|Inference| LLM
     COMM <-->|Inference| LLM
-    ACTION -.->|Audit Log| DB
-    APPROVAL -.->|Record Decision| DB
+    ACTION -.->|Audit Event| SUPABASE
+    APPROVAL -.->|Log Decision| SUPABASE
+    LangGraph_Core -.->|Stream Traces| LANGSMITH
 
-    classDef default fill:#fafafa,stroke:#bbb,stroke-width:1px;
-    classDef nodeStyle fill:#e8f4f8,stroke:#0288d1,stroke-width:2px;
-    classDef gateStyle fill:#fff9c4,stroke:#fbc02d,stroke-width:2px;
-    classDef extStyle fill:#ede7f6,stroke:#512da8,stroke-width:2px;
+    style UI_Layer fill:#0f172a,stroke:#38bdf8,stroke-width:2px,color:#f8fafc;
+    style LangGraph_Core fill:#0f172a,stroke:#818cf8,stroke-width:2px,color:#f8fafc;
+    style Cloud_Integrations fill:#0f172a,stroke:#34d399,stroke-width:2px,color:#f8fafc;
 
-    class RESEARCH,PRIORITIZE,STRATEGY,COMM,ACTION,VERIFY nodeStyle;
-    class APPROVAL gateStyle;
-    class MCP,LLM,DB extStyle;
+    style STREAMLIT fill:#1e293b,stroke:#38bdf8,stroke-width:2px,color:#f8fafc;
+    style FASTAPI fill:#1e293b,stroke:#38bdf8,stroke-width:2px,color:#f8fafc;
+    style RESEARCH fill:#1e293b,stroke:#818cf8,stroke-width:1px,color:#f8fafc;
+    style PRIORITIZE fill:#1e293b,stroke:#818cf8,stroke-width:1px,color:#f8fafc;
+    style STRATEGY fill:#1e293b,stroke:#818cf8,stroke-width:1px,color:#f8fafc;
+    style COMM fill:#1e293b,stroke:#818cf8,stroke-width:1px,color:#f8fafc;
+    style APPROVAL fill:#451a03,stroke:#fbbf24,stroke-width:3px,color:#fef3c7;
+    style ACTION fill:#1e293b,stroke:#34d399,stroke-width:1px,color:#f8fafc;
+    style VERIFY fill:#1e293b,stroke:#34d399,stroke-width:1px,color:#f8fafc;
+
+    style HUBSPOT fill:#1e293b,stroke:#fb923c,stroke-width:2px,color:#f8fafc;
+    style LLM fill:#1e293b,stroke:#a855f7,stroke-width:2px,color:#f8fafc;
+    style SUPABASE fill:#1e293b,stroke:#34d399,stroke-width:2px,color:#f8fafc;
+    style LANGSMITH fill:#1e293b,stroke:#e879f9,stroke-width:2px,color:#f8fafc;
 ```
 
 ---
