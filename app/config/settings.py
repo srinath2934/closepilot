@@ -59,12 +59,15 @@ def get_settings() -> Settings:
     load_dotenv(ENV_FILE_PATH, override=True)
     s = Settings()
     
-    # Export active LangChain / LangSmith variables to os.environ
+    # Export active LangChain / LangSmith variables to os.environ with non-blocking background ingestion
     if s.LANGCHAIN_API_KEY:
         os.environ["LANGCHAIN_TRACING_V2"] = "true"
         os.environ["LANGCHAIN_API_KEY"] = s.LANGCHAIN_API_KEY
         os.environ["LANGCHAIN_PROJECT"] = s.LANGCHAIN_PROJECT
         os.environ["LANGCHAIN_ENDPOINT"] = s.LANGCHAIN_ENDPOINT
+        os.environ["LANGCHAIN_CALLBACKS_BACKGROUND"] = "true"
+        os.environ["LANGSMITH_TRACING_BACKGROUND"] = "true"
+        os.environ["LANGSMITH_RUNS_ENDPOINTS_MAX_TIMEOUT"] = "1"
 
     return s
 

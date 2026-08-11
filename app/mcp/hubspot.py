@@ -225,7 +225,8 @@ class HubSpotMCPClient(BaseMCPClient):
                 logger.info(f"Fetched {len(results)} live deals directly from HubSpot CRM.")
                 return results
         except Exception as e:
-            logger.warning(f"HubSpot deals fetch failed: {e}. Falling back to sandbox.")
+            logger.warning(f"HubSpot deals fetch failed: {e}. Switching to high-speed sandbox mode.")
+            self._custom_use_mock = True
             return self._sandbox_deals
 
     async def get_contacts(self) -> List[Dict[str, Any]]:

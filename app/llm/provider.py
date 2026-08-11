@@ -52,7 +52,10 @@ class NIMAndGroqProvider(BaseLLMProvider):
             api_key=api_key,
             base_url=base_url,
             model=model,
-            temperature=0.2
+            temperature=0.2,
+            max_tokens=512,
+            timeout=12.0,
+            max_retries=1
         )
         self.model = model
 
