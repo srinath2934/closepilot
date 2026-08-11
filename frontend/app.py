@@ -46,9 +46,20 @@ def get_current_settings():
 
 
 def run_async(coro):
-    """Safely run an async coroutine inside Streamlit's event loop."""
-    loop = asyncio.get_event_loop()
-    return loop.run_until_complete(coro)
+    """Safely run an async coroutine inside Streamlit across worker threads."""
+    try:
+        try:
+            loop = asyncio.get_event_loop()
+            if loop.is_closed():
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+        return loop.run_until_complete(coro)
+    except Exception as e:
+        logger.error(f"Async execution failed: {e}")
+        raise e
 
 
 current_settings = get_current_settings()

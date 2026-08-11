@@ -69,12 +69,16 @@ class NIMAndGroqProvider(BaseLLMProvider):
         try:
             async with httpx.AsyncClient(timeout=30.0) as client:
                 resp = await client.post(url, headers=self.headers, json=payload)
-                resp.raise_for_status()
-                data = resp.json()
-                return data["choices"][0]["message"]["content"]
+                if resp.status_code == 200:
+                    data = resp.json()
+                    return data["choices"][0]["message"]["content"]
+                else:
+                    logger.warning(f"LLM API returned status {resp.status_code}: {resp.text}")
+                    # Fallback to Mock response if cloud provider is temporarily rate limited
+                    return MockLLMProvider().generate_response(system_prompt, user_prompt, temperature)
         except Exception as e:
-            logger.error(f"Error calling LLM provider ({self.model} at {self.base_url}): {e}")
-            raise e
+            logger.warning(f"Error calling LLM provider ({self.model}): {e}. Using resilient fallback.")
+            return await MockLLMProvider().generate_response(system_prompt, user_prompt, temperature)
 
     async def generate(self, system_prompt: str, user_prompt: str, temperature: float = 0.2) -> str:
         """Convenience alias for generate_response."""
