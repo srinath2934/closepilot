@@ -11,12 +11,15 @@
 
 ---
 
-## 🎬 Live Video Demonstration & Walkthrough
+## 🎬 Live Product Demonstration
 
-A full end-to-end screen recording demonstrating autonomous pipeline ingestion, real-time prioritization scoring, conversational chat diagnosis, and Human-in-the-Loop CRM execution is available:
+<p align="center">
+  <img src="demo/closepilot_demo.gif" alt="ClosePilot Autonomous Sales Agent Live Demo" width="100%" />
+</p>
 
-- 📹 **Demo Video**: [demo/closepilot_demo.mp4](demo/closepilot_demo.mp4)
-- 🌐 **Live Cloud Deployment**: [https://closepilot-app.onrender.com](https://closepilot-app.onrender.com)
+> 💡 **Watch Full Walkthrough**: Autonomous pipeline exploration, real-time priority scoring, conversational ChatGPT-style deal diagnosis, and Human-in-the-Loop approval before writing tasks and notes directly to HubSpot CRM.
+>
+> 🌐 **Live Production Deployment**: [https://closepilot-app.onrender.com](https://closepilot-app.onrender.com) • 📥 **Download HD Video**: [demo/closepilot_demo.mp4](demo/closepilot_demo.mp4)
 
 ---
 
