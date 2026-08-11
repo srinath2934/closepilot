@@ -93,62 +93,45 @@ flowchart TD
 ## 4. High-Level System Architecture
 
 ```mermaid
-graph TD
-    subgraph UI_Layer ["🖥️ Presentation Layer (Render & Local)"]
-        STREAMLIT["🖥️ <b>Streamlit Enterprise UI</b><br/>• Live Sales Pipeline Explorer<br/>• AI Copilot & Review Modal<br/>• Audit Log & Settings<br/><i>https://closepilot-app.onrender.com</i>"]
-        FASTAPI["🔌 <b>FastAPI REST Server</b><br/>• /api/workflow/start & approve<br/>• /api/deals & /api/health<br/>• Interactive Swagger Docs (/docs)<br/><i>https://closepilot-api.onrender.com</i>"]
+flowchart TD
+    subgraph UI ["🖥️ Presentation Layer"]
+        STREAMLIT["Streamlit Sales Dashboard<br/>(closepilot-app.onrender.com)"]
+        FASTAPI["FastAPI REST Server<br/>(closepilot-api.onrender.com)"]
     end
 
-    subgraph LangGraph_Core ["⚡ LangGraph Multi-Agent Orchestration"]
-        START([START]) --> RESEARCH["🔍 <b>Research Node</b><br/>Ingests live deals, contacts & notes"]
-        RESEARCH --> PRIORITIZE["📊 <b>Prioritize Node</b><br/>Deterministic urgency scoring"]
-        PRIORITIZE --> STRATEGY["🧠 <b>Strategy Node</b><br/>Reasoning over deal blockers"]
-        STRATEGY --> COMM["✍️ <b>Communication Node</b><br/>Zero-hallucination email drafting"]
-        COMM --> APPROVAL{"🛡️ <b>Approval Gate</b><br/>LangGraph Checkpointer Pause"}
-        
-        APPROVAL -->|APPROVED / MODIFIED| ACTION["⚡ <b>Action Node</b><br/>Writes HubSpot tasks & notes"]
-        APPROVAL -->|REJECTED| END_REJECT([END - Skipped])
-        
-        ACTION --> VERIFY["✅ <b>Verification Node</b><br/>Read-after-write confirmation"]
-        VERIFY --> END_SUCCESS([END - Success])
+    subgraph Pipeline ["⚡ LangGraph Multi-Agent Pipeline"]
+        N1["🔍 Research Node<br/>(HubSpot CRM Ingestion)"]
+        N2["📊 Prioritize Node<br/>(Deterministic Scoring)"]
+        N3["🧠 Strategy Node<br/>(Blocker Reasoning)"]
+        N4["✍️ Communication Node<br/>(Email Drafting)"]
+        N5{"🛡️ Approval Gate<br/>(HITL Pause)"}
+        N6["⚡ Action Node<br/>(HubSpot Task/Note Write)"]
+        N7["✅ Verification Node<br/>(Confirmation & Persistence)"]
     end
 
-    subgraph Cloud_Integrations ["🌐 Connected Cloud Services & Infrastructure"]
-        HUBSPOT["🔌 <b>HubSpot Remote MCP</b><br/>• Deals & Contacts Objects<br/>• Tasks & Engagements<br/>• PKCE OAuth Flow"]
-        LLM["🧠 <b>AI Inference Engine</b><br/>• NVIDIA NIM (Llama 3.1 70B)<br/>• Groq LPU (Llama 3.3 70B)"]
-        SUPABASE[("🗄️ <b>Supabase PostgreSQL</b><br/>• agent_threads & runs<br/>• approval_requests<br/>• audit_events")]
-        LANGSMITH["📊 <b>LangSmith Observability</b><br/>• Trace waterfall graphs<br/>• Per-node token & latency tracking"]
+    subgraph Cloud ["🌐 Connected Services"]
+        HUBSPOT["🔌 HubSpot Remote MCP"]
+        LLM["🧠 NVIDIA NIM / Groq LPU"]
+        SUPABASE[("🗄️ Supabase PostgreSQL")]
+        LANGSMITH["📊 LangSmith Observability"]
     end
 
-    STREAMLIT <-->|State / HTTP| FASTAPI
-    FASTAPI <-->|Orchestrates| LangGraph_Core
-    RESEARCH <-->|Read Data| HUBSPOT
-    ACTION -->|Write Tasks & Notes| HUBSPOT
-    VERIFY <-->|Confirm IDs| HUBSPOT
-    STRATEGY <-->|Inference| LLM
-    COMM <-->|Inference| LLM
-    ACTION -.->|Audit Event| SUPABASE
-    APPROVAL -.->|Log Decision| SUPABASE
-    LangGraph_Core -.->|Stream Traces| LANGSMITH
+    STREAMLIT --> FASTAPI
+    FASTAPI --> N1
+    N1 --> N2
+    N2 --> N3
+    N3 --> N4
+    N4 --> N5
+    N5 -->|Approved| N6
+    N6 --> N7
 
-    style UI_Layer fill:#0f172a,stroke:#38bdf8,stroke-width:2px,color:#f8fafc;
-    style LangGraph_Core fill:#0f172a,stroke:#818cf8,stroke-width:2px,color:#f8fafc;
-    style Cloud_Integrations fill:#0f172a,stroke:#34d399,stroke-width:2px,color:#f8fafc;
-
-    style STREAMLIT fill:#1e293b,stroke:#38bdf8,stroke-width:2px,color:#f8fafc;
-    style FASTAPI fill:#1e293b,stroke:#38bdf8,stroke-width:2px,color:#f8fafc;
-    style RESEARCH fill:#1e293b,stroke:#818cf8,stroke-width:1px,color:#f8fafc;
-    style PRIORITIZE fill:#1e293b,stroke:#818cf8,stroke-width:1px,color:#f8fafc;
-    style STRATEGY fill:#1e293b,stroke:#818cf8,stroke-width:1px,color:#f8fafc;
-    style COMM fill:#1e293b,stroke:#818cf8,stroke-width:1px,color:#f8fafc;
-    style APPROVAL fill:#451a03,stroke:#fbbf24,stroke-width:3px,color:#fef3c7;
-    style ACTION fill:#1e293b,stroke:#34d399,stroke-width:1px,color:#f8fafc;
-    style VERIFY fill:#1e293b,stroke:#34d399,stroke-width:1px,color:#f8fafc;
-
-    style HUBSPOT fill:#1e293b,stroke:#fb923c,stroke-width:2px,color:#f8fafc;
-    style LLM fill:#1e293b,stroke:#a855f7,stroke-width:2px,color:#f8fafc;
-    style SUPABASE fill:#1e293b,stroke:#34d399,stroke-width:2px,color:#f8fafc;
-    style LANGSMITH fill:#1e293b,stroke:#e879f9,stroke-width:2px,color:#f8fafc;
+    N1 --> HUBSPOT
+    N3 --> LLM
+    N4 --> LLM
+    N6 --> HUBSPOT
+    N7 --> HUBSPOT
+    N7 --> SUPABASE
+    FASTAPI --> LANGSMITH
 ```
 
 ---
