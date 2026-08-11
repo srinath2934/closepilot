@@ -110,6 +110,14 @@ with st.sidebar:
     )
 
     st.divider()
+    st.subheader("🎬 Demo Video")
+    import os
+    demo_video_path = os.path.join(os.path.dirname(__file__), "..", "demo", "closepilot_demo.mp4")
+    if os.path.exists(demo_video_path):
+        with st.expander(":material/smart_display: Watch Demo Walkthrough", expanded=False):
+            st.video(demo_video_path)
+
+    st.divider()
     st.subheader("Session control")
     st.caption(f"Active Thread: `{st.session_state.thread_id[:12]}...`")
     if st.button(":material/refresh: New session / Reset", type="secondary"):
@@ -125,6 +133,11 @@ with st.sidebar:
 # ---------------------------------------------------------------------------
 st.title(":material/target: AI Sales Intelligence & Follow-Up Copilot")
 st.caption("Deterministic CRM prioritization • LLM strategic reasoning • Human approval gate • HubSpot MCP execution")
+
+# Main Header Video Demo Expander
+if os.path.exists(demo_video_path):
+    with st.expander(":material/smart_display: 🎬 Watch Full ClosePilot System Video Walkthrough", expanded=False):
+        st.video(demo_video_path)
 
 # Main Navigation Tabs
 tab_copilot, tab_explorer, tab_create_deal, tab_audit = st.tabs([
