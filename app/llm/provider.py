@@ -41,35 +41,39 @@ class BaseLLMProvider:
             return json.loads(clean.strip())
 
 
-from langchain_openai import ChatOpenAI
-from langchain_core.messages import SystemMessage, HumanMessage
+import httpx
 
 
 class NIMAndGroqProvider(BaseLLMProvider):
-    """Client supporting NVIDIA NIM, Groq, and OpenAI via LangChain standard interface."""
-    def __init__(self, api_key: str, base_url: Optional[str] = None, model: str = "meta/llama-3.1-70b-instruct"):
-        self.llm = ChatOpenAI(
-            api_key=api_key,
-            base_url=base_url,
-            model=model,
-            temperature=0.2,
-            max_tokens=512,
-            timeout=12.0,
-            max_retries=1
-        )
+    """Direct, high-performance async client for NVIDIA NIM, Groq, and OpenAI APIs."""
+    def __init__(self, api_key: str, base_url: Optional[str] = None, model: str = "meta/llama-3.1-8b-instruct"):
+        self.api_key = api_key
+        self.base_url = (base_url or "https://integrate.api.nvidia.com/v1").rstrip("/")
         self.model = model
+        self.headers = {
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json"
+        }
 
-    @traceable(name="llm_chat_completion")
     async def generate_response(self, system_prompt: str, user_prompt: str, temperature: float = 0.2) -> str:
+        payload = {
+            "model": self.model,
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt}
+            ],
+            "temperature": temperature,
+            "max_tokens": 512
+        }
+        url = f"{self.base_url}/chat/completions"
         try:
-            messages = [
-                SystemMessage(content=system_prompt),
-                HumanMessage(content=user_prompt)
-            ]
-            response = await self.llm.ainvoke(messages)
-            return response.content if isinstance(response.content, str) else str(response.content)
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                resp = await client.post(url, headers=self.headers, json=payload)
+                resp.raise_for_status()
+                data = resp.json()
+                return data["choices"][0]["message"]["content"]
         except Exception as e:
-            logger.error(f"Error calling LLM provider: {e}")
+            logger.error(f"Error calling LLM provider ({self.model} at {self.base_url}): {e}")
             raise e
 
     async def generate(self, system_prompt: str, user_prompt: str, temperature: float = 0.2) -> str:

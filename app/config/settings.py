@@ -20,7 +20,7 @@ class Settings(BaseSettings):
     
     # LLM Providers Configuration
     LLM_PROVIDER: str = "nvidia"
-    LLM_MODEL: str = "meta/llama-3.1-70b-instruct"
+    LLM_MODEL: str = "meta/llama-3.1-8b-instruct"
     
     NVIDIA_API_KEY: str = ""
     NVIDIA_BASE_URL: str = "https://integrate.api.nvidia.com/v1"
