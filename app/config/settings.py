@@ -1,10 +1,9 @@
 """Configuration module for ClosePilot AI Sales Copilot."""
 import os
-from typing import Optional, Literal
 from dotenv import load_dotenv, find_dotenv
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-# Always locate and load the project .env file strictly
+# Always locate and load the project .env file
 ENV_FILE_PATH = find_dotenv(usecwd=True) or os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.env"))
 load_dotenv(ENV_FILE_PATH, override=True)
 
@@ -23,32 +22,30 @@ class Settings(BaseSettings):
     LLM_PROVIDER: str = "nvidia"
     LLM_MODEL: str = "meta/llama-3.1-70b-instruct"
     
-    NVIDIA_API_KEY: Optional[str] = None
+    NVIDIA_API_KEY: str = ""
     NVIDIA_BASE_URL: str = "https://integrate.api.nvidia.com/v1"
     
-    GROQ_API_KEY: Optional[str] = None
-    OPENAI_API_KEY: Optional[str] = None
-    ANTHROPIC_API_KEY: Optional[str] = None
+    GROQ_API_KEY: str = ""
+    OPENAI_API_KEY: str = ""
+    ANTHROPIC_API_KEY: str = ""
     
     # HubSpot MCP / API Configuration
-    HUBSPOT_ACCESS_TOKEN: Optional[str] = None
-    HUBSPOT_CLIENT_ID: Optional[str] = None
-    HUBSPOT_CLIENT_SECRET: Optional[str] = None
-    HUBSPOT_APP_ID: Optional[str] = None
-    HUBSPOT_PORTAL_ID: Optional[str] = None
+    HUBSPOT_ACCESS_TOKEN: str = ""
+    HUBSPOT_CLIENT_ID: str = ""
+    HUBSPOT_CLIENT_SECRET: str = ""
+    HUBSPOT_APP_ID: str = ""
+    HUBSPOT_PORTAL_ID: str = ""
     HUBSPOT_USE_MOCK: bool = False
     
     # Supabase Database Configuration
-    SUPABASE_URL: Optional[str] = None
-    SUPABASE_KEY: Optional[str] = None
+    SUPABASE_URL: str = ""
+    SUPABASE_KEY: str = ""
 
     # LangSmith Observability & Tracing Configuration
-    LANGCHAIN_TRACING_V2: Optional[str] = None
-    LANGCHAIN_API_KEY: Optional[str] = None
-    LANGCHAIN_PROJECT: Optional[str] = "closepilot"
-    LANGCHAIN_ENDPOINT: Optional[str] = "https://api.smith.langchain.com"
-    LANGSMITH_API_KEY: Optional[str] = None
-    LANGSMITH_PROJECT: Optional[str] = None
+    LANGCHAIN_TRACING_V2: str = "true"
+    LANGCHAIN_API_KEY: str = ""
+    LANGCHAIN_PROJECT: str = "closepilot"
+    LANGCHAIN_ENDPOINT: str = "https://api.smith.langchain.com"
 
     model_config = SettingsConfigDict(
         env_file=ENV_FILE_PATH,
@@ -62,18 +59,14 @@ def get_settings() -> Settings:
     load_dotenv(ENV_FILE_PATH, override=True)
     s = Settings()
     
-    # Ensure LangSmith tracing variables in os.environ match .env
-    api_key = s.LANGSMITH_API_KEY or s.LANGCHAIN_API_KEY or os.environ.get("LANGCHAIN_API_KEY")
-    project = s.LANGSMITH_PROJECT or s.LANGCHAIN_PROJECT or os.environ.get("LANGCHAIN_PROJECT") or "closepilot"
-    
-    if api_key:
+    # Export active LangChain / LangSmith variables to os.environ
+    if s.LANGCHAIN_API_KEY:
         os.environ["LANGCHAIN_TRACING_V2"] = "true"
-        os.environ["LANGCHAIN_API_KEY"] = api_key
-        os.environ["LANGCHAIN_PROJECT"] = project
-        os.environ["LANGCHAIN_ENDPOINT"] = s.LANGCHAIN_ENDPOINT or "https://api.smith.langchain.com"
+        os.environ["LANGCHAIN_API_KEY"] = s.LANGCHAIN_API_KEY
+        os.environ["LANGCHAIN_PROJECT"] = s.LANGCHAIN_PROJECT
+        os.environ["LANGCHAIN_ENDPOINT"] = s.LANGCHAIN_ENDPOINT
 
     return s
 
 
 settings = get_settings()
-
