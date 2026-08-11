@@ -14,6 +14,10 @@ class BaseLLMProvider:
     """Base interface for LLM calls."""
     async def generate_response(self, system_prompt: str, user_prompt: str, temperature: float = 0.2) -> str:
         raise NotImplementedError
+
+    async def generate(self, system_prompt: str, user_prompt: str, temperature: float = 0.2) -> str:
+        """Convenience alias for generate_response."""
+        return await self.generate_response(system_prompt, user_prompt, temperature)
     
     @traceable(name="llm_generate_json")
     async def generate_json(self, system_prompt: str, user_prompt: str, temperature: float = 0.1) -> Dict[str, Any]:

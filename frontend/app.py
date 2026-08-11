@@ -125,10 +125,10 @@ tab_copilot, tab_explorer, tab_create_deal, tab_audit, tab_settings = st.tabs([
 ])
 
 # ===========================================================================
-# TAB 1: AI COPILOT & HUMAN-IN-THE-LOOP FOLLOW-UP WORKFLOW
+# TAB 1: UNIFIED AI COPILOT CHAT (AGENT PLUS STYLE)
 # ===========================================================================
 with tab_copilot:
-    # Visualizer Bar
+    # Top Visualizer Bar
     phase = st.session_state.execution_phase
     steps = [
         ("1. Read CRM", phase in ("AWAITING_APPROVAL", "COMPLETED")),
@@ -144,239 +144,132 @@ with tab_copilot:
             type="primary" if is_active else "secondary",
             disabled=True,
             key=f"step_btn_{label}",
+            use_container_width=True
         )
 
     st.divider()
 
-    # Quick Prompt Chips
-    if "active_prompt" not in st.session_state:
-        st.session_state.active_prompt = "Who should I follow up with today?"
-
-    st.markdown("##### 💡 Suggested Sales Inquiries")
+    # Suggested Action Chips
+    st.markdown("##### 💡 Suggested Actions")
     q1, q2, q3, q4 = st.columns(4)
-    if q1.button("🎯 Enterprise Deals ($50k+)", use_container_width=True):
-        st.session_state.active_prompt = "Find urgent enterprise deals worth $50,000 or more"
-        st.rerun()
-    if q2.button("⏳ Stalled Deals (>3 Days)", use_container_width=True):
-        st.session_state.active_prompt = "Find stalled opportunities inactive for more than 3 days"
-        st.rerun()
-    if q3.button("📝 Contracts Pending Sign", use_container_width=True):
-        st.session_state.active_prompt = "Find deals at Contract Sent stage needing closing follow-up"
-        st.rerun()
-    if q4.button("⚡ Daily Top Priorities", use_container_width=True):
-        st.session_state.active_prompt = "Who should I follow up with today?"
-        st.rerun()
+    quick_input = None
+    if q1.button("🎯 Analyze Enterprise Deals ($50k+)", use_container_width=True):
+        quick_input = "Find urgent enterprise deals worth $50,000 or more"
+    if q2.button("⏳ Find Stalled Opportunities (>3 Days)", use_container_width=True):
+        quick_input = "Find stalled opportunities inactive for more than 3 days"
+    if q3.button("📝 Closing Follow-Ups (Contract Sent)", use_container_width=True):
+        quick_input = "Find deals at Contract Sent stage needing closing follow-up"
+    if q4.button("⚡ Run Daily Prioritization", use_container_width=True):
+        quick_input = "Who should I follow up with today?"
 
-    # Query Input Section
-    with st.container(border=True):
-        prompt_col, btn_col = st.columns([4, 1])
-        with prompt_col:
-            user_prompt = st.text_input(
-                "Sales request prompt (Customizable):",
-                value=st.session_state.active_prompt,
-                placeholder="e.g. Find urgent follow-ups for high-value enterprise pipeline deals or Acme Corp",
-                label_visibility="visible",
-                key="main_user_prompt_input"
-            )
-        with btn_col:
-            st.write("")  # spacing
-            trigger_btn = st.button(":material/play_arrow: Analyze CRM", type="primary", use_container_width=True)
+    st.divider()
 
-    # Handle Analysis Trigger
-    if trigger_btn:
-        st.session_state.last_error = None
-        with st.status("Analyzing HubSpot CRM deals...", expanded=True) as status:
-            st.write(":material/search: Ingesting active pipeline deals and decision-maker contacts...")
-            config = {"configurable": {"thread_id": st.session_state.thread_id}}
-            initial_state = {
-                "thread_id": st.session_state.thread_id,
-                "user_request": user_prompt,
-                "intent": "FIND_FOLLOWUPS",
-                "deals": [],
-                "contacts": [],
-                "activities": [],
-                "opportunities": [],
-                "selected_opportunity": None,
-                "priority_score": None,
-                "strategy": None,
-                "followup_draft": None,
-                "approval_status": None,
-                "action_result": None,
-                "verification_result": None,
-                "errors": [],
-                "retry_count": 0,
+    # Chat Messages History Initialization
+    if "chat_messages" not in st.session_state:
+        st.session_state.chat_messages = [
+            {
+                "role": "assistant",
+                "content": "👋 Welcome to **ClosePilot**! I am your autonomous AI Sales Intelligence & Follow-Up Copilot.\n\nYou can chat with me naturally or give commands like:\n* 🔍 *'Who should I follow up with today?'*\n* 🎯 *'Find high-value enterprise deals over $50k'*\n* ⏳ *'Diagnose why Acme Corp deal has stalled for 6 days'*\n* 📝 *'Show me deals at the Contract Sent stage'*\n* ✍️ *'Make the follow-up email under 60 words'*",
+                "workflow_state": None
             }
-            try:
-                st.write(":material/analytics: Computing deterministic priority scores based on deal value, stage, and inactivity...")
-                result = run_async(sales_graph.ainvoke(initial_state, config=config))
+        ]
 
-                # Identify CRM Source
-                deals = result.get("deals", [])
-                has_live_ids = any(str(d.get("id", "")).isdigit() for d in deals)
-                st.session_state.crm_source = "Live HubSpot" if has_live_ids else "Sandbox"
+    # Render Chat Messages Stream
+    for idx, msg in enumerate(st.session_state.chat_messages):
+        with st.chat_message(msg["role"]):
+            st.markdown(msg["content"])
 
-                st.write(":material/auto_awesome: Synthesizing strategy and generating evidence-grounded follow-up draft...")
-                st.session_state.workflow_state = result
-                st.session_state.execution_phase = "AWAITING_APPROVAL"
-                status.update(
-                    label=f"Analysis complete - {len(deals)} deals ranked",
-                    state="complete",
-                )
-                st.rerun()
-            except Exception as e:
-                logger.error(f"Workflow failed: {e}", exc_info=True)
-                st.session_state.last_error = str(e)
-                status.update(label="Analysis failed", state="error")
-                st.error(f"Workflow execution failed: {e}")
-
-    # Error Notification
-    if st.session_state.last_error and phase == "IDLE":
-        st.error(f":material/error: {st.session_state.last_error}")
-
-    # Results & Human Review Panel
-    if st.session_state.workflow_state:
-        state = st.session_state.workflow_state
-        opps = state.get("opportunities", [])
-        selected_opp = state.get("selected_opportunity")
-        strategy = state.get("strategy") or {}
-        draft = state.get("followup_draft") or {}
-        errors = state.get("errors", [])
-
-        # Data source banner
-        if st.session_state.crm_source:
-            if st.session_state.crm_source == "Live HubSpot":
-                st.success(f":material/cloud_done: Data Source: **{st.session_state.crm_source}** ({len(opps)} opportunities retrieved)")
-            else:
-                st.info(f":material/database: Data Source: **{st.session_state.crm_source}** ({len(opps)} opportunities retrieved)")
-
-        if errors:
-            with st.expander(f":material/warning: {len(errors)} Agent Notice(s)", expanded=False):
-                for err in errors:
-                    st.warning(err)
-
-        col_left, col_right = st.columns([1, 1.25])
-
-        # LEFT COLUMN: Ranked Opportunity Deck
-        with col_left:
-            st.subheader(":material/leaderboard: Ranked CRM Opportunities")
-            for i, opp in enumerate(opps):
-                is_selected = selected_opp and str(opp.get("id")) == str(selected_opp.get("id"))
+            # If this message contains an active workflow state, render the interactive Agent Card!
+            wf_state = msg.get("workflow_state")
+            if wf_state:
+                opps = wf_state.get("opportunities", [])
+                selected_opp = wf_state.get("selected_opportunity") or {}
+                strategy = wf_state.get("strategy") or {}
+                draft = wf_state.get("followup_draft") or {}
 
                 with st.container(border=True):
-                    h_col, s_col = st.columns([3, 1])
-                    with h_col:
-                        marker = ":material/star:" if is_selected else f"{i + 1}."
-                        st.markdown(f"**{marker} {opp.get('name')}**")
-                        st.caption(f"{opp.get('contact_name')} ({opp.get('contact_title')}) • {opp.get('company_name')}")
-                    with s_col:
-                        st.metric("Score", f"{opp.get('score', 0):.0f}")
+                    col_left, col_right = st.columns([1, 1.25])
 
-                    m1, m2, m3 = st.columns(3)
-                    m1.markdown(f"`${opp.get('amount', 0):,.0f}`")
-                    m2.markdown(f"`{opp.get('stage')}`")
-                    m3.markdown(f"`{opp.get('days_inactive', 0)}d inactive`")
+                    # LEFT: Ranked Opportunities
+                    with col_left:
+                        st.subheader(":material/leaderboard: Ranked CRM Opportunities")
+                        for i, opp in enumerate(opps):
+                            is_selected = str(opp.get("id")) == str(selected_opp.get("id"))
+                            marker = ":material/star:" if is_selected else f"{i + 1}."
+                            with st.container(border=True):
+                                h_c, s_c = st.columns([3, 1])
+                                with h_c:
+                                    st.markdown(f"**{marker} {opp.get('name')}**")
+                                    st.caption(f"{opp.get('contact_name')} ({opp.get('contact_title')}) • {opp.get('company_name')}")
+                                with s_c:
+                                    st.metric("Score", f"{opp.get('score', 0):.0f}")
 
-                    with st.expander("View Score Breakdown & CRM Facts"):
-                        st.markdown("**Scoring Breakdown:**")
-                        for reason in opp.get("score_reasons", []):
-                            st.markdown(f"• `{reason}`")
-                        st.markdown("**CRM History & Notes:**")
-                        for note in opp.get("notes", []):
-                            st.markdown(f"• {note}")
-                        st.caption(f"Contact Email: `{opp.get('contact_email', 'N/A')}`")
+                                m1, m2, m3 = st.columns(3)
+                                m1.markdown(f"`${opp.get('amount', 0):,.0f}`")
+                                m2.markdown(f"`{opp.get('stage')}`")
+                                m3.markdown(f"`{opp.get('days_inactive', 0)}d inactive`")
 
-                    # Opportunity Switcher Button
-                    if not is_selected and st.session_state.execution_phase == "AWAITING_APPROVAL":
-                        if st.button(f":material/alt_route: Select {opp.get('name')[:20]}...", key=f"switch_{opp.get('id')}"):
-                            with st.spinner(f"Generating strategy and draft for {opp.get('name')}..."):
-                                config = {"configurable": {"thread_id": st.session_state.thread_id}}
-                                state["selected_opportunity"] = opp
-                                state["priority_score"] = opp.get("score")
-                                updated_state = run_async(strategy_node(state))
-                                updated_state = run_async(communication_node(updated_state))
-                                
-                                # Synchronize LangGraph checkpointer state with switched deal
-                                run_async(
-                                    sales_graph.aupdate_state(
-                                        config,
-                                        {
-                                            "selected_opportunity": opp,
-                                            "priority_score": opp.get("score"),
-                                            "strategy": updated_state.get("strategy"),
-                                            "followup_draft": updated_state.get("followup_draft"),
-                                        },
-                                        as_node="prioritize"
-                                    )
-                                )
-                                st.session_state.workflow_state = updated_state
-                                st.rerun()
+                                with st.expander("Score Breakdown & Facts", expanded=False):
+                                    for r in opp.get("score_reasons", []):
+                                        st.markdown(f"• `{r}`")
+                                    for n in opp.get("notes", []):
+                                        st.markdown(f"• {n}")
 
-        # RIGHT COLUMN: Strategic Rationale & Human Approval Gate
-        with col_right:
-            st.subheader(":material/psychology: Strategic Analysis & Follow-Up Gate")
+                                if not is_selected and st.session_state.execution_phase == "AWAITING_APPROVAL":
+                                    if st.button(f":material/alt_route: Select {opp.get('name')[:18]}...", key=f"chat_sel_{idx}_{opp.get('id')}", use_container_width=True):
+                                        config = {"configurable": {"thread_id": st.session_state.thread_id}}
+                                        wf_state["selected_opportunity"] = opp
+                                        wf_state["priority_score"] = opp.get("score")
+                                        up_state = run_async(strategy_node(wf_state))
+                                        up_state = run_async(communication_node(up_state))
+                                        run_async(
+                                            sales_graph.aupdate_state(
+                                                config,
+                                                {
+                                                    "selected_opportunity": opp,
+                                                    "priority_score": opp.get("score"),
+                                                    "strategy": up_state.get("strategy"),
+                                                    "followup_draft": up_state.get("followup_draft"),
+                                                },
+                                                as_node="prioritize"
+                                            )
+                                        )
+                                        msg["workflow_state"] = up_state
+                                        st.session_state.workflow_state = up_state
+                                        st.rerun()
 
-            if selected_opp:
-                # Strategy Briefing Card
-                with st.container(border=True):
-                    st.markdown("**Strategy Agent Rationale**")
-                    action = strategy.get("recommended_action", "SEND_FOLLOWUP_EMAIL")
-                    st.markdown(f":material/play_arrow: **Recommended Action:** `{action}`")
-                    st.markdown(f"**Executive Summary:** {strategy.get('summary', 'N/A')}")
-                    st.markdown(f"**Strategic Rationale:** {strategy.get('rationale', 'N/A')}")
+                    # RIGHT: Strategy & Approval Gate
+                    with col_right:
+                        st.subheader(":material/psychology: Strategy & Follow-Up Gate")
+                        with st.container(border=True):
+                            st.markdown(f":material/play_arrow: **Recommended Action:** `{strategy.get('recommended_action', 'SEND_FOLLOWUP_EMAIL')}`")
+                            st.markdown(f"**Rationale:** {strategy.get('rationale', 'N/A')}")
 
-                # Follow-Up Email Editor
-                st.markdown("#### :material/edit: Grounded Follow-Up Draft (Human Review)")
-                edit_subject = st.text_input(
-                    "Subject Line:",
-                    value=draft.get("subject", ""),
-                    key="edit_subject_input"
-                )
-                edit_body = st.text_area(
-                    "Email Content (Editable):",
-                    value=draft.get("body", ""),
-                    height=220,
-                    key="edit_body_input"
-                )
+                        st.markdown("#### :material/edit: Grounded Follow-Up Draft (Editable)")
+                        edit_subject = st.text_input("Subject Line:", value=draft.get("subject", ""), key=f"chat_subj_{idx}")
+                        edit_body = st.text_area("Email Content:", value=draft.get("body", ""), height=180, key=f"chat_body_{idx}")
 
-                if st.session_state.execution_phase == "AWAITING_APPROVAL":
-                    # ✨ Instruct AI Copilot to Revise Draft
-                    with st.expander(":material/auto_awesome: Instruct Copilot to Revise Draft / Tone", expanded=False):
-                        st.caption("Tell the AI how you want to adjust the draft (e.g. 'Keep it under 75 words', 'Focus on ROI', 'Mention SOC-2 compliance').")
-                        rev_c1, rev_c2 = st.columns([3, 1])
-                        with rev_c1:
-                            rev_instruction = st.text_input(
-                                "Revision instruction:",
-                                placeholder="e.g. Keep it concise, emphasize 15% annual discount, and ask for a 15-min call",
-                                key="rev_input_field",
-                                label_visibility="collapsed"
-                            )
-                        with rev_c2:
-                            if st.button(":material/refresh: Re-draft", type="secondary", use_container_width=True):
-                                if rev_instruction:
-                                    with st.spinner("AI Copilot is revising follow-up draft..."):
-                                        try:
-                                            temp_state = state.copy()
-                                            temp_state["user_request"] = rev_instruction
-                                            updated_comm_state = run_async(communication_node(temp_state))
-                                            if updated_comm_state.get("followup_draft"):
-                                                st.session_state.workflow_state["followup_draft"] = updated_comm_state.get("followup_draft")
-                                                st.success("Draft revised with your custom instruction!")
+                        if st.session_state.execution_phase == "AWAITING_APPROVAL":
+                            # AI Revision Assistant
+                            with st.expander(":material/auto_awesome: Instruct Copilot to Revise Draft / Tone", expanded=False):
+                                rev_c1, rev_c2 = st.columns([3, 1])
+                                with rev_c1:
+                                    rev_inst = st.text_input("Instruction:", placeholder="e.g. Keep under 75 words and emphasize ROI", key=f"chat_rev_{idx}", label_visibility="collapsed")
+                                with rev_c2:
+                                    if st.button(":material/refresh: Re-draft", key=f"chat_rev_btn_{idx}", use_container_width=True):
+                                        if rev_inst:
+                                            temp_state = wf_state.copy()
+                                            temp_state["user_request"] = rev_inst
+                                            up_comm = run_async(communication_node(temp_state))
+                                            if up_comm.get("followup_draft"):
+                                                msg["workflow_state"]["followup_draft"] = up_comm.get("followup_draft")
+                                                st.session_state.workflow_state["followup_draft"] = up_comm.get("followup_draft")
                                                 st.rerun()
-                                        except Exception as e:
-                                            st.error(f"Failed to revise draft: {e}")
 
-                    st.info(
-                        ":material/warning: **Human Approval Required:** Review or edit the drafted follow-up above before executing the write to HubSpot CRM."
-                    )
-
-                    btn_c1, btn_c2 = st.columns(2)
-                    with btn_c1:
-                        if st.button(
-                            ":material/check_circle: Approve & Write to HubSpot",
-                            type="primary",
-                        ):
-                            with st.spinner("Executing approved CRM task and logging activity..."):
-                                try:
+                            st.info(":material/warning: **Human Approval Required:** Review or edit above before writing to HubSpot.")
+                            b1, b2 = st.columns(2)
+                            with b1:
+                                if st.button(":material/check_circle: Approve & Write to HubSpot", type="primary", key=f"chat_appr_{idx}", use_container_width=True):
                                     config = {"configurable": {"thread_id": st.session_state.thread_id}}
                                     update_payload = {
                                         "approval_status": "APPROVED",
@@ -387,93 +280,60 @@ with tab_copilot:
                                             "action_type": "CREATE_CRM_TASK_AND_DRAFT_EMAIL",
                                         },
                                     }
-
-                                    run_async(
-                                        sales_graph.aupdate_state(
-                                            config, update_payload, as_node="communication"
-                                        )
-                                    )
-                                    final_result = run_async(
-                                        sales_graph.ainvoke(None, config=config)
-                                    )
-
+                                    run_async(sales_graph.aupdate_state(config, update_payload, as_node="communication"))
+                                    final_result = run_async(sales_graph.ainvoke(None, config=config))
+                                    msg["workflow_state"] = final_result
                                     st.session_state.workflow_state = final_result
                                     st.session_state.execution_phase = "COMPLETED"
+
+                                    act_res = final_result.get("action_result") or {}
+                                    st.session_state.chat_messages.append({
+                                        "role": "assistant",
+                                        "content": f"🎉 **Execution Approved & Verified in HubSpot CRM!**\n\n• **HubSpot Task ID:** `{act_res.get('task_id', 'N/A')}`\n• **HubSpot Note ID:** `{act_res.get('note_id', 'N/A')}`\n• **Status:** `{final_result.get('verification_result', {}).get('status', 'VERIFIED')}`\n\nThe follow-up task and note have been persisted to your CRM pipeline.",
+                                        "workflow_state": None
+                                    })
                                     st.rerun()
-                                except Exception as e:
-                                    st.error(f"Approval execution failed: {e}")
 
-                    with btn_c2:
-                        if st.button(":material/cancel: Reject / Skip Action"):
-                            try:
-                                config = {"configurable": {"thread_id": st.session_state.thread_id}}
-                                run_async(
-                                    sales_graph.aupdate_state(
-                                        config,
-                                        {"approval_status": "REJECTED"},
-                                        as_node="communication",
-                                    )
-                                )
-                                final_result = run_async(
-                                    sales_graph.ainvoke(None, config=config)
-                                )
-                                st.session_state.workflow_state = final_result
-                                st.session_state.execution_phase = "COMPLETED"
-                                st.rerun()
-                            except Exception as e:
-                                st.error(f"Rejection failed: {e}")
+                            with b2:
+                                if st.button(":material/cancel: Reject / Skip Action", key=f"chat_rej_{idx}", use_container_width=True):
+                                    config = {"configurable": {"thread_id": st.session_state.thread_id}}
+                                    run_async(sales_graph.aupdate_state(config, {"approval_status": "REJECTED"}, as_node="communication"))
+                                    final_result = run_async(sales_graph.ainvoke(None, config=config))
+                                    msg["workflow_state"] = final_result
+                                    st.session_state.workflow_state = final_result
+                                    st.session_state.execution_phase = "COMPLETED"
+                                    st.session_state.chat_messages.append({
+                                        "role": "assistant",
+                                        "content": "🛑 **Action Cancelled / Skipped.** No writes were made to HubSpot CRM.",
+                                        "workflow_state": None
+                                    })
+                                    st.rerun()
 
-                elif st.session_state.execution_phase == "COMPLETED":
-                    action_res = state.get("action_result") or {}
-                    verify_res = state.get("verification_result") or {}
+                        elif st.session_state.execution_phase == "COMPLETED":
+                            if wf_state.get("approval_status") in ("APPROVED", "MODIFIED"):
+                                st.success(":material/check_circle: **Action Completed & Verified in HubSpot CRM!**")
+                            else:
+                                st.warning("🛑 **Action was skipped.**")
 
-                    if state.get("approval_status") in ("APPROVED", "MODIFIED"):
-                        st.success(":material/check_circle: **Action Completed & Verified in HubSpot CRM!**")
-                        with st.container(border=True):
-                            r1, r2 = st.columns(2)
-                            r1.metric("HubSpot Task ID", action_res.get("task_id", "N/A"))
-                            r2.metric("HubSpot Note ID", action_res.get("note_id", "N/A"))
-                            r3, r4 = st.columns(2)
-                            r3.metric("Verification Status", verify_res.get("status", "N/A"))
-                            r4.metric("CRM Verified", str(verify_res.get("verified", False)))
-                            st.caption(f"Persisted to HubSpot CRM at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-                    else:
-                        st.warning("Action was cancelled / rejected by user. No CRM writes were performed.")
+    # Unified Chat Input Bar
+    chat_prompt = st.chat_input("Chat with ClosePilot (e.g. 'Analyze my pipeline', 'Why is Acme Corp prioritized?', 'Make draft shorter')...")
+    
+    # Check if a quick button was clicked
+    active_chat_input = chat_prompt or quick_input
 
-    # -----------------------------------------------------------------------
-    # Interactive AI Pipeline Diagnostician & Sales Copilot Chat
-    # -----------------------------------------------------------------------
-    st.divider()
-    st.subheader(":material/forum: Interactive AI Pipeline Diagnostician & Sales Chat")
-    st.caption("Chat with ClosePilot in real time. Ask strategic questions, analyze pipeline bottlenecks, compare opportunities, or diagnose stalled deals.")
+    if active_chat_input:
+        st.session_state.chat_messages.append({"role": "user", "content": active_chat_input, "workflow_state": None})
+        input_lower = active_chat_input.lower().strip(" \"'\t\r\n")
 
-    if "chat_messages" not in st.session_state:
-        st.session_state.chat_messages = [
-            {
-                "role": "assistant",
-                "content": "👋 Hi! I'm ClosePilot. Ask me anything about your active sales pipeline, deal blockers, or why specific opportunities were prioritized."
-            }
-        ]
-
-    for msg in st.session_state.chat_messages:
-        with st.chat_message(msg["role"]):
-            st.markdown(msg["content"])
-
-    user_chat_input = st.chat_input("Chat with ClosePilot (e.g. 'Analyze my CRM pipeline', 'Why is Acme Corp prioritized?', 'Make draft shorter')...")
-    if user_chat_input:
-        st.session_state.chat_messages.append({"role": "user", "content": user_chat_input})
-        input_lower = user_chat_input.lower().strip()
-
-        # Check Intent 1: Pipeline Analysis / Follow-Up Generation
+        # Intent Detection
         is_analysis_intent = any(
             kw in input_lower for kw in [
                 "analyze", "follow up", "followup", "who should i", "priority", "prioritize",
                 "find deal", "find urgent", "enterprise deal", "stalled deal", "opportunities",
-                "pipeline review", "run workflow", "which deal"
+                "pipeline review", "run workflow", "which deal", "today"
             ]
         )
 
-        # Check Intent 2: Draft Revision
         is_revision_intent = any(
             kw in input_lower for kw in [
                 "rewrite", "revise", "make it shorter", "make draft", "shorter", "change tone",
@@ -483,15 +343,15 @@ with tab_copilot:
 
         if is_analysis_intent:
             with st.chat_message("user"):
-                st.markdown(user_chat_input)
+                st.markdown(active_chat_input)
 
             with st.chat_message("assistant"):
-                with st.spinner(f"ClosePilot is executing multi-agent pipeline for '{user_chat_input}'..."):
+                with st.spinner(f"ClosePilot is executing multi-agent pipeline for '{active_chat_input}'..."):
                     try:
                         config = {"configurable": {"thread_id": st.session_state.thread_id}}
                         initial_state = {
                             "thread_id": st.session_state.thread_id,
-                            "user_request": user_chat_input,
+                            "user_request": active_chat_input,
                             "intent": "FIND_FOLLOWUPS",
                             "deals": [],
                             "contacts": [],
@@ -509,49 +369,54 @@ with tab_copilot:
                         }
                         result = run_async(sales_graph.ainvoke(initial_state, config=config))
                         deals = result.get("deals", [])
-                        opps = result.get("opportunities", [])
                         selected = result.get("selected_opportunity") or {}
-                        
+
                         has_live_ids = any(str(d.get("id", "")).isdigit() for d in deals)
                         st.session_state.crm_source = "Live HubSpot" if has_live_ids else "Sandbox"
                         st.session_state.workflow_state = result
                         st.session_state.execution_phase = "AWAITING_APPROVAL"
-                        
-                        reply_text = f"✅ **Analysis Complete!** I evaluated **{len(deals)} active CRM deals**.\n\n🎯 **Top Priority:** **{selected.get('name', 'N/A')}** (${float(selected.get('amount', 0)):,.0f} • {selected.get('stage', 'N/A')})\n• **Score:** `{selected.get('score', 0):.0f} pts` ({', '.join(selected.get('score_reasons', [])[:2])})\n• **Key Contact:** {selected.get('contact_name')} ({selected.get('contact_title')})\n\n👉 *Review the strategic rationale and approve or customize the follow-up draft in the review panel above!*"
-                        st.markdown(reply_text)
-                        st.session_state.chat_messages.append({"role": "assistant", "content": reply_text})
+
+                        reply_text = f"✅ **Analysis Complete!** Evaluated **{len(deals)} active CRM deals**.\n\n🎯 **Top Priority:** **{selected.get('name', 'N/A')}** (${float(selected.get('amount', 0)):,.0f} • `{selected.get('stage', 'N/A')}`)\n• **Score:** `{selected.get('score', 0):.0f} pts`\n• **Contact:** {selected.get('contact_name')} ({selected.get('contact_title')})\n\n👉 *Review and approve the follow-up below:*"
+                        st.session_state.chat_messages.append({
+                            "role": "assistant",
+                            "content": reply_text,
+                            "workflow_state": result
+                        })
                         st.rerun()
                     except Exception as e:
                         err_msg = f"Analysis workflow failed: {e}"
                         st.error(err_msg)
-                        st.session_state.chat_messages.append({"role": "assistant", "content": err_msg})
+                        st.session_state.chat_messages.append({"role": "assistant", "content": err_msg, "workflow_state": None})
 
         elif is_revision_intent:
             with st.chat_message("user"):
-                st.markdown(user_chat_input)
+                st.markdown(active_chat_input)
 
             with st.chat_message("assistant"):
                 with st.spinner("Revising follow-up email draft with your instructions..."):
                     try:
                         temp_state = st.session_state.workflow_state.copy()
-                        temp_state["user_request"] = user_chat_input
+                        temp_state["user_request"] = active_chat_input
                         updated_comm = run_async(communication_node(temp_state))
                         if updated_comm.get("followup_draft"):
                             st.session_state.workflow_state["followup_draft"] = updated_comm.get("followup_draft")
                             rev_draft = updated_comm.get("followup_draft")
-                            reply_text = f"✨ **Draft Revised Successfully!**\n\n**Subject:** {rev_draft.get('subject')}\n\n```text\n{rev_draft.get('body')}\n```\n\n*The review card above has been updated. You can approve and write it to HubSpot whenever you are ready!*"
-                            st.markdown(reply_text)
-                            st.session_state.chat_messages.append({"role": "assistant", "content": reply_text})
+                            reply_text = f"✨ **Draft Revised Successfully!**\n\n**Subject:** {rev_draft.get('subject')}\n\n```text\n{rev_draft.get('body')}\n```\n\n*The review card has been updated. You can approve and write it to HubSpot whenever you are ready!*"
+                            st.session_state.chat_messages.append({
+                                "role": "assistant",
+                                "content": reply_text,
+                                "workflow_state": st.session_state.workflow_state
+                            })
                             st.rerun()
                     except Exception as e:
                         err_msg = f"Draft revision failed: {e}"
                         st.error(err_msg)
-                        st.session_state.chat_messages.append({"role": "assistant", "content": err_msg})
+                        st.session_state.chat_messages.append({"role": "assistant", "content": err_msg, "workflow_state": None})
 
         else:
             # General Conversational & Diagnostic Query
             with st.chat_message("user"):
-                st.markdown(user_chat_input)
+                st.markdown(active_chat_input)
 
             with st.chat_message("assistant"):
                 with st.spinner("ClosePilot is analyzing CRM pipeline context with NVIDIA LLM..."):
@@ -584,13 +449,13 @@ You have real-time access to the user's HubSpot CRM pipeline:
 - Be concise, analytical, and actionable. Provide bullet points and clear next steps."""
 
                         llm = get_llm_provider()
-                        ai_reply = run_async(llm.generate(chat_system_prompt, user_chat_input))
+                        ai_reply = run_async(llm.generate(chat_system_prompt, active_chat_input))
                         st.markdown(ai_reply)
-                        st.session_state.chat_messages.append({"role": "assistant", "content": ai_reply})
+                        st.session_state.chat_messages.append({"role": "assistant", "content": ai_reply, "workflow_state": None})
                     except Exception as e:
                         err_msg = f"Chat analysis error: {e}"
                         st.error(err_msg)
-                        st.session_state.chat_messages.append({"role": "assistant", "content": err_msg})
+                        st.session_state.chat_messages.append({"role": "assistant", "content": err_msg, "workflow_state": None})
 
 
 # ===========================================================================
