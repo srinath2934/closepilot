@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 from app.config.settings import settings
 from app.mcp.client import BaseMCPClient
 
-logger = logging.getLogger("gwc.mcp.hubspot")
+logger = logging.getLogger("sales_copilot.mcp.hubspot")
 
 
 # High-fidelity realistic CRM Sandbox Data

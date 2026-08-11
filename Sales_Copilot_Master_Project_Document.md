@@ -1,8 +1,9 @@
-MASTER PROJECT DOCUMENTAI Sales Intelligence & Follow-Up Agent
+# MASTER PROJECT SPECIFICATION
+## Sales Copilot • AI Sales Intelligence & Follow-Up System
 
-LangGraph • MCP • HubSpot • Gmail • NVIDIA NIM • PostgreSQL + pgvector
+**Production Reference Architecture Baseline**
 
-GWC Data.AI — 45-Day Project Concept / One-Day MVP Baseline
+LangGraph • Remote MCP • HubSpot • NVIDIA NIM / Groq • Supabase PostgreSQL
 
 # 1. Executive Summary
 

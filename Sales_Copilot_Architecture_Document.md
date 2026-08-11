@@ -1,8 +1,9 @@
-FINAL TECHNICAL ARCHITECTUREAI Sales Intelligence & Follow-Up Agent
+# FINAL TECHNICAL ARCHITECTURE
+## Sales Copilot • AI Sales Intelligence & Follow-Up System
 
-GWC Data.AI — Final Architecture Baseline
+**Production Reference Architecture Baseline**
 
-LangGraph • MCP • HubSpot • Gmail • NVIDIA NIM • Supabase PostgreSQL + pgvector
+LangGraph • Remote MCP • HubSpot • NVIDIA NIM / Groq • Supabase PostgreSQL
 
 # 1. Architecture Decision
 

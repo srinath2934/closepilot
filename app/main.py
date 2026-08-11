@@ -18,7 +18,7 @@ from app.graph.graph import sales_graph
 from app.mcp.hubspot import hubspot_client
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
-logger = logging.getLogger("gwc.api")
+logger = logging.getLogger("sales_copilot.api")
 
 app = FastAPI(
     title=settings.APP_NAME,

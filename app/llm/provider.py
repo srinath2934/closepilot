@@ -4,7 +4,7 @@ import logging
 from typing import List, Dict, Any, Optional
 from app.config.settings import settings
 
-logger = logging.getLogger("gwc.llm")
+logger = logging.getLogger("sales_copilot.llm")
 
 
 from langsmith import traceable
