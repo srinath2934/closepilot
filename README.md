@@ -293,6 +293,19 @@ Open **`http://localhost:8501`** in your browser.
 
 ---
 
+### 🐳 Run with Docker (1-Command Launch)
+Prefer running everything in an isolated container? Use the unified Docker setup:
+
+```bash
+docker compose up -d --build
+```
+* Access UI: `http://localhost:8501`
+* Access API & Docs: `http://localhost:8000/docs`
+
+👉 *For full container management, ECS, Cloud Run, and reverse proxy recipes, see the **[Docker Deployment Guide (DOCKER_README.md)](file:///d:/sales%20agent/DOCKER_README.md)**.*
+
+---
+
 ## 10. REST API Reference
 
 The FastAPI backend runs on `http://127.0.0.1:8000` with interactive Swagger docs at `/docs`:

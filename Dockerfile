@@ -1,4 +1,4 @@
-# Production Multi-Service Container for GWC AI Sales Agent
+# Production Multi-Service Container for ClosePilot Sales Copilot
 FROM python:3.12-slim
 
 # Set environment variables
