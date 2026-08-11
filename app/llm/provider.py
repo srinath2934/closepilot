@@ -45,9 +45,9 @@ from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage, HumanMessage
 
 
-class OpenAILikeProvider(BaseLLMProvider):
-    """Generic client supporting Groq, NVIDIA NIM, and OpenAI via LangChain."""
-    def __init__(self, api_key: str, base_url: Optional[str] = None, model: str = "llama-3.3-70b-versatile"):
+class NIMAndGroqProvider(BaseLLMProvider):
+    """Client supporting NVIDIA NIM, Groq, and OpenAI via LangChain standard interface."""
+    def __init__(self, api_key: str, base_url: Optional[str] = None, model: str = "meta/llama-3.1-70b-instruct"):
         self.llm = ChatOpenAI(
             api_key=api_key,
             base_url=base_url,
@@ -69,7 +69,13 @@ class OpenAILikeProvider(BaseLLMProvider):
             logger.error(f"Error calling LLM provider: {e}")
             raise e
 
+    async def generate(self, system_prompt: str, user_prompt: str, temperature: float = 0.2) -> str:
+        """Convenience alias for generate_response."""
+        return await self.generate_response(system_prompt, user_prompt, temperature)
 
+
+# Backward compatibility alias
+OpenAILikeProvider = NIMAndGroqProvider
 
 
 class MockLLMProvider(BaseLLMProvider):
@@ -101,27 +107,30 @@ class MockLLMProvider(BaseLLMProvider):
             })
         return "I have analyzed the sales context and prepared the grounded recommendation."
 
+    async def generate(self, system_prompt: str, user_prompt: str, temperature: float = 0.2) -> str:
+        return await self.generate_response(system_prompt, user_prompt, temperature)
+
 
 def get_llm_provider() -> BaseLLMProvider:
-    """Factory to return the configured LLM provider."""
+    """Factory to return the configured LLM provider (NVIDIA NIM, Groq, or Mock)."""
     from app.config.settings import get_settings
     current_settings = get_settings()
     provider_name = current_settings.LLM_PROVIDER.lower()
     
     if provider_name == "nvidia" and current_settings.NVIDIA_API_KEY:
-        return OpenAILikeProvider(
+        return NIMAndGroqProvider(
             api_key=current_settings.NVIDIA_API_KEY,
             base_url=current_settings.NVIDIA_BASE_URL,
             model=current_settings.LLM_MODEL
         )
     elif provider_name == "groq" and current_settings.GROQ_API_KEY:
-        return OpenAILikeProvider(
+        return NIMAndGroqProvider(
             api_key=current_settings.GROQ_API_KEY,
             base_url="https://api.groq.com/openai/v1",
             model="llama-3.3-70b-versatile"
         )
     elif provider_name == "openai" and current_settings.OPENAI_API_KEY:
-        return OpenAILikeProvider(
+        return NIMAndGroqProvider(
             api_key=current_settings.OPENAI_API_KEY,
             model="gpt-4o"
         )

@@ -116,12 +116,11 @@ st.title(":material/target: AI Sales Intelligence & Follow-Up Copilot")
 st.caption("Deterministic CRM prioritization • LLM strategic reasoning • Human approval gate • HubSpot MCP execution")
 
 # Main Navigation Tabs
-tab_copilot, tab_explorer, tab_create_deal, tab_audit, tab_settings = st.tabs([
+tab_copilot, tab_explorer, tab_create_deal, tab_audit = st.tabs([
     ":material/psychology: AI Copilot & Follow-Ups",
     ":material/table_chart: Live CRM Explorer",
     ":material/add_circle: Create CRM Deal",
     ":material/history: Audit & Security Trail",
-    ":material/settings: Settings & Health",
 ])
 
 # ===========================================================================
@@ -573,25 +572,4 @@ with tab_audit:
         st.info("No write actions logged yet in this session. Run the workflow and approve a task to see real-time audit records.")
 
 
-# ===========================================================================
-# TAB 5: SETTINGS & HEALTH CHECK
-# ===========================================================================
-with tab_settings:
-    st.subheader(":material/settings: System Configuration & Integration Health")
 
-    sett_c1, sett_c2 = st.columns(2)
-    with sett_c1:
-        with st.container(border=True):
-            st.markdown("**LLM Configuration**")
-            st.markdown(f"• Provider: `{current_settings.LLM_PROVIDER}`")
-            st.markdown(f"• Model: `{current_settings.LLM_MODEL}`")
-            st.markdown(f"• Groq API Key: `{'Configured' if current_settings.GROQ_API_KEY else 'Missing'}`")
-            st.markdown(f"• NVIDIA NIM Key: `{'Configured' if current_settings.NVIDIA_API_KEY else 'Missing'}`")
-
-    with sett_c2:
-        with st.container(border=True):
-            st.markdown("**HubSpot & Supabase Integration**")
-            st.markdown(f"• HubSpot Client ID: `{current_settings.HUBSPOT_CLIENT_ID}`")
-            st.markdown(f"• HubSpot Token: `{'Configured' if current_settings.HUBSPOT_ACCESS_TOKEN else 'Missing'}`")
-            st.markdown(f"• Supabase URL: `{current_settings.SUPABASE_URL or 'Not configured'}`")
-            st.markdown(f"• Backend Port: `{current_settings.BACKEND_PORT}`")
