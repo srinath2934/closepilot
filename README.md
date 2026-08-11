@@ -7,8 +7,16 @@
 [![HubSpot MCP](https://img.shields.io/badge/Integration-HubSpot%20MCP-FF7A59?logo=hubspot&logoColor=white)](https://developers.hubspot.com/)
 [![LLM Provider](https://img.shields.io/badge/LLM-Groq%20%7C%20NVIDIA%20NIM-F05032)](https://groq.com)
 [![FastAPI](https://img.shields.io/badge/API-FastAPI-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
-[![Streamlit](https://img.shields.io/badge/UI-Streamlit-FF4B4B?logo=streamlit&logoColor=white)](https://streamlit.io)
 [![Tests](https://img.shields.io/badge/Tests-14%2F14%20Passing-brightgreen?logo=pytest&logoColor=white)](https://pytest.org)
+
+---
+
+## 🎬 Live Video Demonstration & Walkthrough
+
+A full end-to-end screen recording demonstrating autonomous pipeline ingestion, real-time prioritization scoring, conversational chat diagnosis, and Human-in-the-Loop CRM execution is available:
+
+- 📹 **Demo Video**: [demo/closepilot_demo.mp4](demo/closepilot_demo.mp4)
+- 🌐 **Live Cloud Deployment**: [https://closepilot-app.onrender.com](https://closepilot-app.onrender.com)
 
 ---
 
