@@ -30,18 +30,41 @@ def calculate_opportunity_score(deal: Dict[str, Any], user_request: str = "") ->
         deal_name_words = [w.lower() for w in deal.get("name", "").split() if len(w) > 2]
         company_words = [w.lower() for w in deal.get("company_name", "").split() if len(w) > 2]
         contact_words = [w.lower() for w in deal.get("contact_name", "").split() if len(w) > 2]
+        notes_text = " ".join(deal.get("notes", [])).lower()
         
+        # Exact entity/company/contact match
         matched_terms = [w for w in (deal_name_words + company_words + contact_words) if w in req_lower]
         if matched_terms:
             boost = 100.0
             score += boost
             reasons.append(f"+{boost:.0f} pts: Exact match for custom prompt query ('{', '.join(set(matched_terms))}')")
 
+        # Stage keyword match
         stage_name = deal.get("stage", "").lower()
         stage_terms = [w for w in stage_name.split() if len(w) > 3 and w in req_lower]
         if stage_terms:
             score += 40.0
             reasons.append(f"+40 pts: Stage '{deal.get('stage')}' matches query filter")
+
+        # Semantic intent matches
+        if any(term in req_lower for term in ["contract", "sign", "closing", "late stage"]) and "contract" in stage_name:
+            score += 30.0
+            reasons.append("+30 pts: Matches 'contract/closing' query intent")
+
+        if any(term in req_lower for term in ["enterprise", "big deal", "high value", "largest", "large"]) and float(deal.get("amount", 0)) >= 50000:
+            score += 30.0
+            reasons.append("+30 pts: Matches 'high value/enterprise' query intent")
+
+        if any(term in req_lower for term in ["stalled", "stuck", "urgent", "inactive", "old", "overdue"]) and int(deal.get("days_inactive", 0)) >= 3:
+            score += 30.0
+            reasons.append("+30 pts: Matches 'stalled/overdue' query intent")
+
+        # Notes content match (e.g. searching for specific objections or topics)
+        query_words = [w for w in req_lower.split() if len(w) > 3 and w not in ["find", "show", "give", "with", "what", "which", "deal", "deals", "today", "help", "from"]]
+        notes_matches = [w for w in query_words if w in notes_text]
+        if notes_matches and not matched_terms:
+            score += 35.0
+            reasons.append(f"+35 pts: CRM notes contain topic keyword ('{', '.join(notes_matches)}')")
 
     # 1. Deal Stage Weight
     stage = deal.get("stage", "")

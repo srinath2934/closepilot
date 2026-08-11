@@ -27,7 +27,7 @@ from app.config.settings import Settings, get_settings
 from app.graph.nodes.strategy import strategy_node
 from app.graph.nodes.communication import communication_node
 
-logger = logging.getLogger("gwc.frontend")
+logger = logging.getLogger("sales_copilot.frontend")
 
 st.set_page_config(
     page_title="ClosePilot • AI Sales Follow-Up Copilot",
@@ -148,19 +148,39 @@ with tab_copilot:
 
     st.divider()
 
+    # Quick Prompt Chips
+    if "active_prompt" not in st.session_state:
+        st.session_state.active_prompt = "Who should I follow up with today?"
+
+    st.markdown("##### 💡 Suggested Sales Inquiries")
+    q1, q2, q3, q4 = st.columns(4)
+    if q1.button("🎯 Enterprise Deals ($50k+)", use_container_width=True):
+        st.session_state.active_prompt = "Find urgent enterprise deals worth $50,000 or more"
+        st.rerun()
+    if q2.button("⏳ Stalled Deals (>3 Days)", use_container_width=True):
+        st.session_state.active_prompt = "Find stalled opportunities inactive for more than 3 days"
+        st.rerun()
+    if q3.button("📝 Contracts Pending Sign", use_container_width=True):
+        st.session_state.active_prompt = "Find deals at Contract Sent stage needing closing follow-up"
+        st.rerun()
+    if q4.button("⚡ Daily Top Priorities", use_container_width=True):
+        st.session_state.active_prompt = "Who should I follow up with today?"
+        st.rerun()
+
     # Query Input Section
     with st.container(border=True):
         prompt_col, btn_col = st.columns([4, 1])
         with prompt_col:
             user_prompt = st.text_input(
-                "Sales request prompt:",
-                value="Who should I follow up with today?",
-                placeholder="e.g. Find urgent follow-ups for high-value enterprise pipeline deals",
+                "Sales request prompt (Customizable):",
+                value=st.session_state.active_prompt,
+                placeholder="e.g. Find urgent follow-ups for high-value enterprise pipeline deals or Acme Corp",
                 label_visibility="visible",
+                key="main_user_prompt_input"
             )
         with btn_col:
             st.write("")  # spacing
-            trigger_btn = st.button(":material/play_arrow: Analyze CRM", type="primary")
+            trigger_btn = st.button(":material/play_arrow: Analyze CRM", type="primary", use_container_width=True)
 
     # Handle Analysis Trigger
     if trigger_btn:
@@ -319,6 +339,32 @@ with tab_copilot:
                 )
 
                 if st.session_state.execution_phase == "AWAITING_APPROVAL":
+                    # ✨ Instruct AI Copilot to Revise Draft
+                    with st.expander(":material/auto_awesome: Instruct Copilot to Revise Draft / Tone", expanded=False):
+                        st.caption("Tell the AI how you want to adjust the draft (e.g. 'Keep it under 75 words', 'Focus on ROI', 'Mention SOC-2 compliance').")
+                        rev_c1, rev_c2 = st.columns([3, 1])
+                        with rev_c1:
+                            rev_instruction = st.text_input(
+                                "Revision instruction:",
+                                placeholder="e.g. Keep it concise, emphasize 15% annual discount, and ask for a 15-min call",
+                                key="rev_input_field",
+                                label_visibility="collapsed"
+                            )
+                        with rev_c2:
+                            if st.button(":material/refresh: Re-draft", type="secondary", use_container_width=True):
+                                if rev_instruction:
+                                    with st.spinner("AI Copilot is revising follow-up draft..."):
+                                        try:
+                                            temp_state = state.copy()
+                                            temp_state["user_request"] = rev_instruction
+                                            updated_comm_state = run_async(communication_node(temp_state))
+                                            if updated_comm_state.get("followup_draft"):
+                                                st.session_state.workflow_state["followup_draft"] = updated_comm_state.get("followup_draft")
+                                                st.success("Draft revised with your custom instruction!")
+                                                st.rerun()
+                                        except Exception as e:
+                                            st.error(f"Failed to revise draft: {e}")
+
                     st.info(
                         ":material/warning: **Human Approval Required:** Review or edit the drafted follow-up above before executing the write to HubSpot CRM."
                     )
@@ -393,6 +439,71 @@ with tab_copilot:
                             st.caption(f"Persisted to HubSpot CRM at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
                     else:
                         st.warning("Action was cancelled / rejected by user. No CRM writes were performed.")
+
+    # -----------------------------------------------------------------------
+    # Interactive AI Pipeline Diagnostician & Sales Copilot Chat
+    # -----------------------------------------------------------------------
+    st.divider()
+    st.subheader(":material/forum: Interactive AI Pipeline Diagnostician & Sales Chat")
+    st.caption("Chat with ClosePilot in real time. Ask strategic questions, analyze pipeline bottlenecks, compare opportunities, or diagnose stalled deals.")
+
+    if "chat_messages" not in st.session_state:
+        st.session_state.chat_messages = [
+            {
+                "role": "assistant",
+                "content": "👋 Hi! I'm ClosePilot. Ask me anything about your active sales pipeline, deal blockers, or why specific opportunities were prioritized."
+            }
+        ]
+
+    for msg in st.session_state.chat_messages:
+        with st.chat_message(msg["role"]):
+            st.markdown(msg["content"])
+
+    user_chat_input = st.chat_input("Ask a question (e.g. 'Diagnose why Acme Corp deal is stalled' or 'What are the main risks across my pipeline?')")
+    if user_chat_input:
+        st.session_state.chat_messages.append({"role": "user", "content": user_chat_input})
+        with st.chat_message("user"):
+            st.markdown(user_chat_input)
+
+        with st.chat_message("assistant"):
+            with st.spinner("ClosePilot is analyzing pipeline context with NVIDIA LLM..."):
+                try:
+                    from app.llm.provider import get_llm_provider
+                    
+                    # Gather current opportunities from state or live CRM
+                    active_opps = []
+                    if st.session_state.workflow_state:
+                        active_opps = st.session_state.workflow_state.get("opportunities", [])
+                    if not active_opps:
+                        active_opps = run_async(hubspot_client.get_deals())
+
+                    context_lines = []
+                    for o in active_opps[:10]:
+                        notes_str = " | Notes: " + " ".join(o.get("notes", [])) if o.get("notes") else ""
+                        context_lines.append(
+                            f"• Deal: {o.get('name')} | Stage: {o.get('stage')} | Amount: ${float(o.get('amount', 0)):,.0f} | Inactive: {o.get('days_inactive', 0)} days | Contact: {o.get('contact_name')} ({o.get('contact_title')}, {o.get('company_name')}){notes_str}"
+                        )
+                    pipeline_context = "\n".join(context_lines)
+
+                    chat_system_prompt = f"""You are ClosePilot, an elite AI Sales Intelligence & Revenue Operations Copilot.
+You have real-time access to the user's HubSpot CRM pipeline:
+
+### ACTIVE CRM PIPELINE:
+{pipeline_context}
+
+### INSTRUCTIONS:
+- Answer the user's strategic questions, diagnose deal bottlenecks, explain prioritization rankings, or suggest outreach angles.
+- Ground all facts strictly in the CRM data above.
+- Be concise, analytical, and actionable. Provide bullet points and clear next steps."""
+
+                    llm = get_llm_provider()
+                    ai_reply = run_async(llm.generate(chat_system_prompt, user_chat_input))
+                    st.markdown(ai_reply)
+                    st.session_state.chat_messages.append({"role": "assistant", "content": ai_reply})
+                except Exception as e:
+                    err_msg = f"Chat analysis error: {e}"
+                    st.error(err_msg)
+                    st.session_state.chat_messages.append({"role": "assistant", "content": err_msg})
 
 
 # ===========================================================================
