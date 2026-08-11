@@ -8,7 +8,6 @@ logger = logging.getLogger("gwc.llm")
 
 
 from langsmith import traceable
-from langsmith.wrappers import wrap_openai
 
 
 class BaseLLMProvider:
