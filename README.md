@@ -77,39 +77,21 @@ Traditional sales workflows suffer from five fundamental breakdowns:
 
 ---
 
-## 3. The Proposed Solution
+## 4. The Proposed Solution
 
 The ClosePilot system solves these challenges through a **hybrid deterministic-reasoning architecture**:
 
 ```mermaid
 flowchart TD
-    subgraph S1 ["1. INGEST & SCORE (Zero-Hallucination & Zero-Token-Cost)"]
-        A["🔍 1. Ingest Live Deals & Contacts<br/><b>HubSpot Remote MCP Client</b>"] --> B["📊 2. Compute Urgency Score<br/><b>Deterministic Mathematical Rules</b>"]
-    end
-
-    subgraph S2 ["2. STRATEGIC REASONING & DRAFTING (Constrained LLM)"]
-        B --> C["🧠 3. Analyze Buyer Blockers & Strategy<br/><b>NVIDIA Llama 3.1 70B / Groq LPU</b>"]
-        C --> D["✍️ 4. Grounded Follow-up Draft<br/><b>Anti-Invention Guardrails</b>"]
-    end
-
-    subgraph S3 ["3. HUMAN-IN-THE-LOOP SAFETY GATE (LangGraph Pause)"]
-        D --> E{"🛡️ 5. Sales Rep Approval Gate<br/><b>Review • Edit • Approve • Reject</b>"}
-    end
-
-    subgraph S4 ["4. EXECUTE, PERSIST & AUDIT"]
-        E -->|"✅ Approved / Modified"| F["⚡ 6. Execute CRM Write<br/><b>Schedule HubSpot Task & Log Note</b>"]
-        E -->|"🛑 Rejected"| G["⏭️ Skip Execution<br/><b>Zero Side-Effects</b>"]
-        F --> H["✅ 7. Read-After-Write Verification<br/>& Immutable Supabase Audit Log"]
-    end
-
-    style A fill:#0f172a,stroke:#38bdf8,stroke-width:2px,color:#f8fafc;
-    style B fill:#0f172a,stroke:#38bdf8,stroke-width:2px,color:#f8fafc;
-    style C fill:#1e1b4b,stroke:#818cf8,stroke-width:2px,color:#f8fafc;
-    style D fill:#1e1b4b,stroke:#818cf8,stroke-width:2px,color:#f8fafc;
-    style E fill:#451a03,stroke:#fbbf24,stroke-width:3px,color:#fef3c7;
-    style F fill:#064e3b,stroke:#34d399,stroke-width:2px,color:#ecfdf5;
-    style G fill:#7f1d1d,stroke:#f87171,stroke-width:2px,color:#fef2f2;
-    style H fill:#064e3b,stroke:#34d399,stroke-width:2px,color:#ecfdf5;
+    A["🔍 1. Ingest Live Deals & Contacts (HubSpot MCP)"] --> B["📊 2. Compute Deterministic Urgency Score"]
+    B --> C["🧠 3. Strategic Blocker Analysis (NVIDIA / Groq)"]
+    C --> D["✍️ 4. Grounded Follow-up Email Draft"]
+    D --> E{"🛡️ 5. Human Approval Gate"}
+    
+    E -->|Approved / Modified| F["⚡ 6. Execute CRM Task & Note (HubSpot)"]
+    E -->|Rejected| G["⏭️ 6. Skip Write (Zero Side-Effects)"]
+    
+    F --> H["✅ 7. Read-After-Write Verification & Supabase Audit"]
 ```
 
 * **Deterministic Prioritization**: Fast mathematical scoring rank-orders deals by stage weights, contract sizes, and days inactive without token consumption or hallucination.
@@ -120,7 +102,7 @@ flowchart TD
 
 ---
 
-## 4. High-Level System Architecture
+## 5. High-Level System Architecture
 
 ```mermaid
 flowchart TD
@@ -166,7 +148,7 @@ flowchart TD
 
 ---
 
-## 5. Detailed Multi-Agent Workflow
+## 6. Detailed Multi-Agent Workflow
 
 | Node / Agent | Responsibility | Implementation File |
 |---|---|---|
@@ -180,7 +162,7 @@ flowchart TD
 
 ---
 
-## 6. Deterministic Prioritization Formula
+## 7. Deterministic Prioritization Formula
 
 The Prioritization Engine computes priority urgency without LLM variance:
 
@@ -208,7 +190,7 @@ $$\text{Priority Score} = S_{\text{stage}} + V_{\text{amount}} + I_{\text{inacti
 
 ---
 
-## 7. Safety, Guardrails & Zero-Hallucination Policy
+## 8. Safety, Guardrails & Zero-Hallucination Policy
 
 The system enforces enterprise AI safety standards:
 
@@ -223,7 +205,7 @@ The system enforces enterprise AI safety standards:
 
 ---
 
-## 8. Repository File Structure
+## 9. Repository File Structure
 
 ```
 d:/sales agent/
@@ -266,7 +248,7 @@ d:/sales agent/
 
 ---
 
-## 9. Getting Started & Installation
+## 10. Getting Started & Installation
 
 ### Prerequisites
 * Python 3.11+
@@ -287,9 +269,9 @@ pip install -r requirements.txt
 Create a `.env` file in the project root:
 ```env
 # LLM Provider: groq | nvidia | openai | mock
-LLM_PROVIDER=groq
-LLM_MODEL=llama-3.3-70b-versatile
-GROQ_API_KEY=gsk_your_groq_api_key_here
+LLM_PROVIDER=nvidia
+LLM_MODEL=meta/llama-3.1-70b-instruct
+NVIDIA_API_KEY=your_nvidia_api_key
 
 # HubSpot Integration
 HUBSPOT_APP_ID=your_hubspot_app_id
@@ -336,7 +318,7 @@ docker compose up -d --build
 
 ---
 
-## 10. REST API Reference
+## 11. REST API Reference
 
 The FastAPI backend runs on `http://127.0.0.1:8000` with interactive Swagger docs at `/docs`:
 
@@ -355,7 +337,7 @@ The FastAPI backend runs on `http://127.0.0.1:8000` with interactive Swagger doc
 
 ---
 
-## 11. Automated Testing & Verification
+## 12. Automated Testing & Verification
 
 The test suite covers unit logic, repository persistence, API lifecycle, and end-to-end multi-scenario agent flows:
 
