@@ -7,11 +7,16 @@ from app.config.settings import settings
 logger = logging.getLogger("gwc.llm")
 
 
+from langsmith import traceable
+from langsmith.wrappers import wrap_openai
+
+
 class BaseLLMProvider:
     """Base interface for LLM calls."""
     async def generate_response(self, system_prompt: str, user_prompt: str, temperature: float = 0.2) -> str:
         raise NotImplementedError
     
+    @traceable(name="llm_generate_json")
     async def generate_json(self, system_prompt: str, user_prompt: str, temperature: float = 0.1) -> Dict[str, Any]:
         raw = await self.generate_response(system_prompt, user_prompt, temperature)
         import re
@@ -33,27 +38,35 @@ class BaseLLMProvider:
             return json.loads(clean.strip())
 
 
+from langchain_openai import ChatOpenAI
+from langchain_core.messages import SystemMessage, HumanMessage
+
+
 class OpenAILikeProvider(BaseLLMProvider):
-    """Generic OpenAI-compatible client (used by NVIDIA NIM, Groq, and OpenAI)."""
-    def __init__(self, api_key: str, base_url: Optional[str] = None, model: str = "meta/llama-3.1-70b-instruct"):
-        from openai import AsyncOpenAI
-        self.client = AsyncOpenAI(api_key=api_key, base_url=base_url)
+    """Generic client supporting Groq, NVIDIA NIM, and OpenAI via LangChain."""
+    def __init__(self, api_key: str, base_url: Optional[str] = None, model: str = "llama-3.3-70b-versatile"):
+        self.llm = ChatOpenAI(
+            api_key=api_key,
+            base_url=base_url,
+            model=model,
+            temperature=0.2
+        )
         self.model = model
 
+    @traceable(name="llm_chat_completion")
     async def generate_response(self, system_prompt: str, user_prompt: str, temperature: float = 0.2) -> str:
         try:
-            response = await self.client.chat.completions.create(
-                model=self.model,
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt}
-                ],
-                temperature=temperature
-            )
-            return response.choices[0].message.content or ""
+            messages = [
+                SystemMessage(content=system_prompt),
+                HumanMessage(content=user_prompt)
+            ]
+            response = await self.llm.ainvoke(messages)
+            return response.content if isinstance(response.content, str) else str(response.content)
         except Exception as e:
             logger.error(f"Error calling LLM provider: {e}")
             raise e
+
+
 
 
 class MockLLMProvider(BaseLLMProvider):

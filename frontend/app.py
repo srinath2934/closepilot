@@ -3,8 +3,14 @@ Comprehensive Enterprise UI: Copilot Workflow, Live Pipeline Explorer, Deal Crea
 """
 import sys
 import os
+from dotenv import load_dotenv
+load_dotenv(override=True)
+
 # Ensure root workspace directory is on sys.path for streamlit
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
+from app.config.settings import Settings, get_settings
+get_settings()  # Exports LANGCHAIN_TRACING_V2 & LANGCHAIN_API_KEY
 
 import nest_asyncio
 nest_asyncio.apply()

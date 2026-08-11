@@ -1,10 +1,11 @@
-"""Stand-alone runnable CLI demonstration of the GWC AI Sales Agent workflow."""
-import asyncio
-import os
-import sys
+from dotenv import load_dotenv
+load_dotenv(override=True)
 
 # Ensure project root is in sys.path
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
+
+from app.config.settings import get_settings
+get_settings()  # Exports LANGCHAIN_TRACING_V2 & LANGCHAIN_API_KEY
 
 from app.graph.graph import create_sales_graph
 from langgraph.checkpoint.memory import MemorySaver
@@ -12,7 +13,7 @@ from langgraph.checkpoint.memory import MemorySaver
 
 async def run_pipeline_demo():
     print("=" * 60)
-    print("  GWC AI Sales Intelligence Agent - Live Execution")
+    print("  ClosePilot AI Sales Copilot - Live Execution")
     print("=" * 60)
 
     # 1. Initialize StateGraph with memory checkpointer
