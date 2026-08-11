@@ -327,9 +327,10 @@ with tab_copilot:
         # Intent Detection
         is_analysis_intent = any(
             kw in input_lower for kw in [
-                "analyze", "follow up", "followup", "who should i", "priority", "prioritize",
-                "find deal", "find urgent", "enterprise deal", "stalled deal", "opportunities",
-                "pipeline review", "run workflow", "which deal", "today"
+                "analyze", "follow up", "follow-up", "followup", "follow-ups", "followups",
+                "who should", "who needs", "priority", "prioritize", "urgent", "find deal",
+                "find urgent", "enterprise deal", "stalled", "opportunities", "deals",
+                "pipeline review", "run workflow", "which deal", "today", "pipeline"
             ]
         )
 
